@@ -1,11 +1,12 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getDB, departments } from "@/lib/db";
+import { getDB, departments, units, capacityUnits } from "@/lib/db";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -15,12 +16,17 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { jsPDF } from "jspdf";
+import { PrinterIcon, FileDown, Save } from "lucide-react";
 
 export default function Dispense() {
   const [language, setLanguage] = useState<"en" | "ar">("ar");
   const [selectedItem, setSelectedItem] = useState("");
   const [quantity, setQuantity] = useState(0);
   const [department, setDepartment] = useState("");
+  const [unit, setUnit] = useState("");
+  const [capacity, setCapacity] = useState("");
+  const [capacityUnit, setCapacityUnit] = useState("");
+  const [notes, setNotes] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -55,6 +61,10 @@ export default function Dispense() {
         quantity,
         type: "out",
         department,
+        unit,
+        capacity: Number(capacity),
+        capacityUnit,
+        notes,
         date: new Date()
       });
       
@@ -62,7 +72,6 @@ export default function Dispense() {
     },
     onSuccess: ({ item, transactionId }) => {
       queryClient.invalidateQueries({ queryKey: ["items"] });
-      generatePDF(item, quantity, department, transactionId);
       toast({
         title: language === "ar" ? "تم بنجاح" : "Success",
         description: language === "ar"
@@ -79,25 +88,27 @@ export default function Dispense() {
     }
   });
 
-  const generatePDF = (item: any, quantity: number, department: string, transactionId: string) => {
+  const generatePDF = (item: any) => {
     const doc = new jsPDF();
     
     // Add header
     doc.setFont("helvetica", "bold");
     doc.setFontSize(20);
-    doc.text(language === "ar" ? "فاتورة صرف مخزون" : "Inventory Dispense Receipt", 105, 20, { align: "center" });
+    doc.text("أمر صرف مخزني", 105, 20, { align: "center" });
     
     // Add content
     doc.setFontSize(12);
     doc.setFont("helvetica", "normal");
     
     const content = [
-      [`${language === "ar" ? "رقم المعاملة" : "Transaction ID"}: ${transactionId}`],
-      [`${language === "ar" ? "التاريخ" : "Date"}: ${new Date().toLocaleDateString()}`],
-      [`${language === "ar" ? "اسم الصنف" : "Item Name"}: ${language === "ar" ? item.nameAr : item.name}`],
-      [`${language === "ar" ? "الكمية" : "Quantity"}: ${quantity}`],
-      [`${language === "ar" ? "القسم" : "Department"}: ${department}`]
-    ];
+      [`التاريخ: ${new Date().toLocaleDateString('ar-SA')}`],
+      [`القسم: ${department}`],
+      [`الصنف: ${item.nameAr}`],
+      [`الكمية: ${quantity}`],
+      [`الوحدة: ${unit}`],
+      capacity && [`السعة: ${capacity} ${capacityUnit}`],
+      notes && [`ملاحظات: ${notes}`]
+    ].filter(Boolean);
     
     let yPos = 40;
     content.forEach(line => {
@@ -106,16 +117,14 @@ export default function Dispense() {
     });
     
     // Save PDF
-    doc.save(`receipt-${transactionId}.pdf`);
+    doc.save(`امر-صرف-${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
-  const handleDispense = () => {
+  const handleSave = () => {
     if (!selectedItem || !quantity || !department) {
       toast({
-        title: language === "ar" ? "خطأ" : "Error",
-        description: language === "ar"
-          ? "الرجاء ملء جميع الحقول المطلوبة"
-          : "Please fill all required fields",
+        title: "خطأ",
+        description: "الرجاء ملء جميع الحقول المطلوبة",
         variant: "destructive"
       });
       return;
@@ -128,51 +137,25 @@ export default function Dispense() {
     });
   };
 
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const selectedItemData = items?.find(item => item.id === selectedItem);
+
   return (
     <div className="p-6">
-      <h1 className={`text-2xl font-bold mb-6 ${language === "ar" ? "font-arabic" : "font-english"}`}>
-        {language === "ar" ? "صرف المخزون" : "Dispense Inventory"}
+      <h1 className="text-2xl font-bold mb-6 font-arabic">
+        أمر/طلب (صرف مخزني)
       </h1>
       
-      <Card className="max-w-md mx-auto p-6">
+      <Card className="max-w-2xl mx-auto p-6">
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label>
-              {language === "ar" ? "الصنف" : "Item"}
-            </Label>
-            <Select onValueChange={setSelectedItem}>
-              <SelectTrigger>
-                <SelectValue placeholder={language === "ar" ? "اختر الصنف" : "Select item"} />
-              </SelectTrigger>
-              <SelectContent>
-                {items?.map((item) => (
-                  <SelectItem key={item.id} value={item.id}>
-                    {language === "ar" ? item.nameAr : item.name} ({item.quantity})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label>
-              {language === "ar" ? "الكمية" : "Quantity"}
-            </Label>
-            <Input
-              type="number"
-              min="1"
-              value={quantity}
-              onChange={(e) => setQuantity(Number(e.target.value))}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label>
-              {language === "ar" ? "القسم" : "Department"}
-            </Label>
+            <Label className="font-arabic">القسم</Label>
             <Select onValueChange={setDepartment}>
               <SelectTrigger>
-                <SelectValue placeholder={language === "ar" ? "اختر القسم" : "Select department"} />
+                <SelectValue placeholder="اختر القسم" />
               </SelectTrigger>
               <SelectContent>
                 {departments.map((dept) => (
@@ -184,9 +167,102 @@ export default function Dispense() {
             </Select>
           </div>
 
-          <Button onClick={handleDispense} className="w-full">
-            {language === "ar" ? "صرف" : "Dispense"}
-          </Button>
+          <div className="space-y-2">
+            <Label className="font-arabic">الصنف</Label>
+            <Select onValueChange={setSelectedItem}>
+              <SelectTrigger>
+                <SelectValue placeholder="اختر الصنف" />
+              </SelectTrigger>
+              <SelectContent>
+                {items?.map((item) => (
+                  <SelectItem key={item.id} value={item.id}>
+                    {item.nameAr} ({item.quantity})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label className="font-arabic">الكمية</Label>
+            <Input
+              type="number"
+              min="1"
+              value={quantity}
+              onChange={(e) => setQuantity(Number(e.target.value))}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label className="font-arabic">الوحدة</Label>
+            <Select onValueChange={setUnit}>
+              <SelectTrigger>
+                <SelectValue placeholder="اختر الوحدة" />
+              </SelectTrigger>
+              <SelectContent>
+                {units.map((u) => (
+                  <SelectItem key={u} value={u}>
+                    {u}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="font-arabic">السعة</Label>
+              <Input
+                type="number"
+                value={capacity}
+                onChange={(e) => setCapacity(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="font-arabic">وحدة السعة</Label>
+              <Select onValueChange={setCapacityUnit}>
+                <SelectTrigger>
+                  <SelectValue placeholder="اختر وحدة السعة" />
+                </SelectTrigger>
+                <SelectContent>
+                  {capacityUnits.map((u) => (
+                    <SelectItem key={u} value={u}>
+                      {u}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label className="font-arabic">ملاحظات</Label>
+            <Textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="أدخل الملاحظات هنا"
+              className="font-arabic"
+            />
+          </div>
+
+          <div className="flex gap-4 pt-4">
+            <Button onClick={handleSave} className="flex-1">
+              <Save className="ml-2 h-4 w-4" />
+              حفظ
+            </Button>
+            <Button onClick={handlePrint} variant="outline" className="flex-1">
+              <PrinterIcon className="ml-2 h-4 w-4" />
+              طباعة
+            </Button>
+            <Button
+              onClick={() => selectedItemData && generatePDF(selectedItemData)}
+              variant="outline"
+              className="flex-1"
+            >
+              <FileDown className="ml-2 h-4 w-4" />
+              تصدير PDF
+            </Button>
+          </div>
         </div>
       </Card>
     </div>
