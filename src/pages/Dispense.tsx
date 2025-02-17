@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getDB } from "@/lib/db";
+import { getDB, departments } from "@/lib/db";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -170,10 +170,18 @@ export default function Dispense() {
             <Label>
               {language === "ar" ? "القسم" : "Department"}
             </Label>
-            <Input
-              value={department}
-              onChange={(e) => setDepartment(e.target.value)}
-            />
+            <Select onValueChange={setDepartment}>
+              <SelectTrigger>
+                <SelectValue placeholder={language === "ar" ? "اختر القسم" : "Select department"} />
+              </SelectTrigger>
+              <SelectContent>
+                {departments.map((dept) => (
+                  <SelectItem key={dept} value={dept}>
+                    {dept}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <Button onClick={handleDispense} className="w-full">

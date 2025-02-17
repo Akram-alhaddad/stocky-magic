@@ -101,12 +101,18 @@ export default function Items() {
                 <h3 className="font-arabic font-medium">{item.nameAr}</h3>
                 <p className="text-sm text-gray-600 mt-1">
                   {language === "ar" ? "الكمية: " : "Quantity: "}
-                  {item.quantity}
+                  {item.quantity} {item.unit}
                 </p>
                 <p className="text-sm text-gray-600">
                   {language === "ar" ? "الفئة: " : "Category: "}
                   {item.category}
                 </p>
+                {item.capacity && (
+                  <p className="text-sm text-gray-600">
+                    {language === "ar" ? "السعة: " : "Capacity: "}
+                    {item.capacity} {item.capacityUnit}
+                  </p>
+                )}
               </div>
               <Button
                 variant="destructive"
