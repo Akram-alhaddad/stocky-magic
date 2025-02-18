@@ -1,5 +1,4 @@
 
-import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getDB } from "@/lib/db";
 import { Card } from "@/components/ui/card";
@@ -15,7 +14,6 @@ import ItemForm from "@/components/ItemForm";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Items() {
-  const [language, setLanguage] = useState<"en" | "ar">("ar");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -41,10 +39,8 @@ export default function Items() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["items"] });
       toast({
-        title: language === "ar" ? "تم بنجاح" : "Success",
-        description: language === "ar" 
-          ? "تم إضافة الصنف بنجاح"
-          : "Item added successfully"
+        title: "تم بنجاح",
+        description: "تم إضافة الصنف بنجاح"
       });
     }
   });
@@ -57,10 +53,8 @@ export default function Items() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["items"] });
       toast({
-        title: language === "ar" ? "تم بنجاح" : "Success",
-        description: language === "ar"
-          ? "تم حذف الصنف بنجاح"
-          : "Item deleted successfully"
+        title: "تم بنجاح",
+        description: "تم حذف الصنف بنجاح"
       });
     }
   });
@@ -68,26 +62,23 @@ export default function Items() {
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className={`text-2xl font-bold ${language === "ar" ? "font-arabic" : "font-english"}`}>
-          {language === "ar" ? "إدارة الأصناف" : "Items Management"}
+        <h1 className="text-2xl font-bold font-arabic">
+          إدارة الأصناف
         </h1>
         
         <Dialog>
           <DialogTrigger asChild>
             <Button>
-              {language === "ar" ? "إضافة صنف جديد" : "Add New Item"}
+              إضافة صنف جديد
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>
-                {language === "ar" ? "إضافة صنف جديد" : "Add New Item"}
+                إضافة صنف جديد
               </DialogTitle>
             </DialogHeader>
-            <ItemForm
-              onSubmit={(data) => addItemMutation.mutate(data)}
-              language={language}
-            />
+            <ItemForm onSubmit={(data) => addItemMutation.mutate(data)} />
           </DialogContent>
         </Dialog>
       </div>
@@ -97,20 +88,16 @@ export default function Items() {
           <Card key={item.id} className="p-4">
             <div className="flex justify-between items-start">
               <div>
-                <h3 className="font-english font-medium">{item.name}</h3>
                 <h3 className="font-arabic font-medium">{item.nameAr}</h3>
                 <p className="text-sm text-gray-600 mt-1">
-                  {language === "ar" ? "الكمية: " : "Quantity: "}
-                  {item.quantity} {item.unit}
+                  الكمية: {item.quantity} {item.unit}
                 </p>
                 <p className="text-sm text-gray-600">
-                  {language === "ar" ? "الفئة: " : "Category: "}
-                  {item.category}
+                  الفئة: {item.category}
                 </p>
                 {item.capacity && (
                   <p className="text-sm text-gray-600">
-                    {language === "ar" ? "السعة: " : "Capacity: "}
-                    {item.capacity} {item.capacityUnit}
+                    السعة: {item.capacity} {item.capacityUnit}
                   </p>
                 )}
               </div>
@@ -119,7 +106,7 @@ export default function Items() {
                 size="sm"
                 onClick={() => deleteItemMutation.mutate(item.id)}
               >
-                {language === "ar" ? "حذف" : "Delete"}
+                حذف
               </Button>
             </div>
           </Card>

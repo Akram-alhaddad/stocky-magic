@@ -7,25 +7,21 @@ import { useToast } from "@/hooks/use-toast";
 
 interface ItemFormProps {
   onSubmit: (item: {
-    name: string;
     nameAr: string;
     quantity: number;
     minQuantity: number;
     category: string;
   }) => void;
   initialData?: {
-    name: string;
     nameAr: string;
     quantity: number;
     minQuantity: number;
     category: string;
   };
-  language: "en" | "ar";
 }
 
-export default function ItemForm({ onSubmit, initialData, language }: ItemFormProps) {
+export default function ItemForm({ onSubmit, initialData }: ItemFormProps) {
   const [formData, setFormData] = useState(initialData || {
-    name: "",
     nameAr: "",
     quantity: 0,
     minQuantity: 0,
@@ -37,12 +33,10 @@ export default function ItemForm({ onSubmit, initialData, language }: ItemFormPr
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.name || !formData.nameAr || !formData.category) {
+    if (!formData.nameAr || !formData.category) {
       toast({
-        title: language === "ar" ? "خطأ" : "Error",
-        description: language === "ar" 
-          ? "الرجاء ملء جميع الحقول المطلوبة"
-          : "Please fill all required fields",
+        title: "خطأ",
+        description: "الرجاء ملء جميع الحقول المطلوبة",
         variant: "destructive"
       });
       return;
@@ -53,35 +47,22 @@ export default function ItemForm({ onSubmit, initialData, language }: ItemFormPr
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="name">
-            {language === "ar" ? "اسم الصنف (إنجليزي)" : "Item Name (English)"}
-          </Label>
-          <Input
-            id="name"
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          />
-        </div>
-        
-        <div className="space-y-2">
-          <Label htmlFor="nameAr">
-            {language === "ar" ? "اسم الصنف (عربي)" : "Item Name (Arabic)"}
-          </Label>
-          <Input
-            id="nameAr"
-            value={formData.nameAr}
-            onChange={(e) => setFormData({ ...formData, nameAr: e.target.value })}
-            className="font-arabic"
-          />
-        </div>
+      <div className="space-y-2">
+        <Label htmlFor="nameAr">
+          اسم الصنف
+        </Label>
+        <Input
+          id="nameAr"
+          value={formData.nameAr}
+          onChange={(e) => setFormData({ ...formData, nameAr: e.target.value })}
+          className="font-arabic"
+        />
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="quantity">
-            {language === "ar" ? "الكمية" : "Quantity"}
+            الكمية
           </Label>
           <Input
             id="quantity"
@@ -93,7 +74,7 @@ export default function ItemForm({ onSubmit, initialData, language }: ItemFormPr
         
         <div className="space-y-2">
           <Label htmlFor="minQuantity">
-            {language === "ar" ? "الحد الأدنى" : "Minimum Quantity"}
+            الحد الأدنى
           </Label>
           <Input
             id="minQuantity"
@@ -106,7 +87,7 @@ export default function ItemForm({ onSubmit, initialData, language }: ItemFormPr
 
       <div className="space-y-2">
         <Label htmlFor="category">
-          {language === "ar" ? "الفئة" : "Category"}
+          الفئة
         </Label>
         <Input
           id="category"
@@ -116,7 +97,7 @@ export default function ItemForm({ onSubmit, initialData, language }: ItemFormPr
       </div>
 
       <Button type="submit" className="w-full">
-        {language === "ar" ? "حفظ" : "Save"}
+        حفظ
       </Button>
     </form>
   );
