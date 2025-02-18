@@ -9,8 +9,6 @@ import { ResponsiveLine } from "@nivo/line";
 import { jsPDF } from "jspdf";
 
 export default function Reports() {
-  const [language, setLanguage] = useState<"en" | "ar">("ar");
-
   const { data: reportData } = useQuery({
     queryKey: ["report-data"],
     queryFn: async () => {
@@ -20,7 +18,7 @@ export default function Reports() {
       
       // Process data for charts
       const itemQuantities = items.map(item => ({
-        item: language === "ar" ? item.nameAr : item.name,
+        item: item.nameAr,
         quantity: item.quantity
       }));
       
@@ -51,7 +49,7 @@ export default function Reports() {
     
     doc.setFont("helvetica", "bold");
     doc.setFontSize(20);
-    doc.text(language === "ar" ? "تقرير المخزون" : "Inventory Report", 105, 20, { align: "center" });
+    doc.text("تقرير المخزون", 105, 20, { align: "center" });
     
     doc.setFontSize(12);
     doc.setFont("helvetica", "normal");
@@ -59,42 +57,42 @@ export default function Reports() {
     let yPos = 40;
     
     // Add inventory summary
-    doc.text(language === "ar" ? "ملخص المخزون" : "Inventory Summary", 20, yPos);
+    doc.text("ملخص المخزون", 20, yPos);
     yPos += 10;
     
     reportData?.items.forEach(item => {
-      const line = `${language === "ar" ? item.nameAr : item.name}: ${item.quantity}`;
+      const line = `${item.nameAr}: ${item.quantity}`;
       doc.text(line, 30, yPos);
       yPos += 10;
     });
     
     // Add transactions summary
     yPos += 10;
-    doc.text(language === "ar" ? "ملخص المعاملات" : "Transactions Summary", 20, yPos);
+    doc.text("ملخص المعاملات", 20, yPos);
     yPos += 10;
     
     const totalOut = reportData?.transactions.filter(t => t.type === "out").length || 0;
-    doc.text(`${language === "ar" ? "إجمالي المعاملات" : "Total Transactions"}: ${totalOut}`, 30, yPos);
+    doc.text(`إجمالي المعاملات: ${totalOut}`, 30, yPos);
     
     doc.save("inventory-report.pdf");
   };
 
   return (
-    <div className="p-6">
+    <div className="p-6 min-h-screen w-full">
       <div className="flex justify-between items-center mb-6">
-        <h1 className={`text-2xl font-bold ${language === "ar" ? "font-arabic" : "font-english"}`}>
-          {language === "ar" ? "التقارير" : "Reports"}
+        <h1 className="text-2xl font-bold font-arabic">
+          التقارير
         </h1>
         
         <Button onClick={generatePDF}>
-          {language === "ar" ? "تصدير PDF" : "Export PDF"}
+          تصدير PDF
         </Button>
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="p-4">
-          <h2 className={`text-lg font-medium mb-4 ${language === "ar" ? "font-arabic" : "font-english"}`}>
-            {language === "ar" ? "كميات المخزون" : "Inventory Quantities"}
+          <h2 className="text-lg font-medium mb-4 font-arabic">
+            كميات المخزون
           </h2>
           <div className="h-[400px]">
             {reportData?.itemQuantities && (
@@ -114,15 +112,15 @@ export default function Reports() {
         </Card>
 
         <Card className="p-4">
-          <h2 className={`text-lg font-medium mb-4 ${language === "ar" ? "font-arabic" : "font-english"}`}>
-            {language === "ar" ? "المعاملات اليومية" : "Daily Transactions"}
+          <h2 className="text-lg font-medium mb-4 font-arabic">
+            المعاملات اليومية
           </h2>
           <div className="h-[400px]">
             {reportData?.dailyTransactions && (
               <ResponsiveLine
                 data={[
                   {
-                    id: language === "ar" ? "المعاملات" : "Transactions",
+                    id: "المعاملات",
                     data: reportData.dailyTransactions
                   }
                 ]}

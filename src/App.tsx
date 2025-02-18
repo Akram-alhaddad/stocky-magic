@@ -34,18 +34,16 @@ const App = () => {
           <Toaster />
           <Sonner />
           <BrowserRouter>
-            <div className="flex">
+            <div className="flex min-h-screen w-full">
               <Sidebar />
-              <main className="flex-1 p-6">
-                <div className="container mx-auto">
-                  <Routes>
-                    <Route path="/" element={<Index />} />
-                    <Route path="/items" element={<Items />} />
-                    <Route path="/dispense" element={<Dispense />} />
-                    <Route path="/reports" element={<Reports />} />
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                </div>
+              <main className="flex-1 w-full">
+                <Routes>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/items" element={<Items />} />
+                  <Route path="/dispense" element={<Dispense />} />
+                  <Route path="/reports" element={<Reports />} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
               </main>
             </div>
           </BrowserRouter>

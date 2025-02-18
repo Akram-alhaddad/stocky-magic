@@ -23,8 +23,8 @@ interface ItemFormProps {
 export default function ItemForm({ onSubmit, initialData }: ItemFormProps) {
   const [formData, setFormData] = useState(initialData || {
     nameAr: "",
-    quantity: 0,
-    minQuantity: 0,
+    quantity: undefined,
+    minQuantity: undefined,
     category: ""
   });
   
@@ -42,7 +42,11 @@ export default function ItemForm({ onSubmit, initialData }: ItemFormProps) {
       return;
     }
     
-    onSubmit(formData);
+    onSubmit({
+      ...formData,
+      quantity: Number(formData.quantity) || 0,
+      minQuantity: Number(formData.minQuantity) || 0
+    });
   };
 
   return (
@@ -67,8 +71,8 @@ export default function ItemForm({ onSubmit, initialData }: ItemFormProps) {
           <Input
             id="quantity"
             type="number"
-            value={formData.quantity}
-            onChange={(e) => setFormData({ ...formData, quantity: Number(e.target.value) })}
+            value={formData.quantity || ""}
+            onChange={(e) => setFormData({ ...formData, quantity: e.target.value ? Number(e.target.value) : undefined })}
           />
         </div>
         
@@ -79,8 +83,8 @@ export default function ItemForm({ onSubmit, initialData }: ItemFormProps) {
           <Input
             id="minQuantity"
             type="number"
-            value={formData.minQuantity}
-            onChange={(e) => setFormData({ ...formData, minQuantity: Number(e.target.value) })}
+            value={formData.minQuantity || ""}
+            onChange={(e) => setFormData({ ...formData, minQuantity: e.target.value ? Number(e.target.value) : undefined })}
           />
         </div>
       </div>
