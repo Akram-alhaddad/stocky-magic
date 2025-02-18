@@ -6,7 +6,6 @@ interface InventoryDB extends DBSchema {
     key: string;
     value: {
       id: string;
-      name: string;
       nameAr: string;
       quantity: number;
       minQuantity: number;
@@ -22,13 +21,17 @@ interface InventoryDB extends DBSchema {
     key: string;
     value: {
       id: string;
-      itemId: string;
-      quantity: number;
-      type: 'in' | 'out';
-      department: string;
-      unit?: string;
-      notes?: string;
       date: Date;
+      department: string;
+      items: Array<{
+        itemId: string;
+        quantity: number;
+        unit?: string;
+        capacity?: number;
+        capacityUnit?: string;
+        notes?: string;
+      }>;
+      type: 'in' | 'out';
     };
     indexes: { 'by-date': Date; 'by-department': string };
   };
