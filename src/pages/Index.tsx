@@ -1,195 +1,142 @@
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { getDB } from "@/lib/db";
-import { Package, TrendingDown, AlertTriangle, BarChart3 } from "lucide-react";
-import { useState } from "react";
-import { ResponsiveBar } from "@nivo/bar";
-import { ResponsiveLine } from "@nivo/line";
+import { Card } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { AlertCircle } from "lucide-react";
 
-const Index = () => {
-  const [language] = useState<"en" | "ar">("ar");
-  
+export default function Index() {
   const { data: items } = useQuery({
-    queryKey: ['items'],
+    queryKey: ["items"],
     queryFn: async () => {
       const db = await getDB();
-      return db.getAll('items');
+      return db.getAll("items");
     }
   });
 
   const { data: transactions } = useQuery({
-    queryKey: ['transactions'],
+    queryKey: ["recent-transactions"],
     queryFn: async () => {
       const db = await getDB();
-      return db.getAll('transactions');
+      const allTransactions = await db.getAll("transactions");
+      return allTransactions
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        .slice(0, 5);
     }
   });
 
-  const totalItems = items?.length || 0;
-  const totalDispensed = transactions?.filter(t => t.type === 'out').length || 0;
-  const lowStockItems = items?.filter(item => item.quantity <= item.minQuantity).length || 0;
-
-  const stats = [
-    {
-      title: "إجمالي الأصناف",
-      value: totalItems,
-      icon: Package,
-      color: "text-blue-600",
-      bgColor: "bg-blue-100"
-    },
-    {
-      title: "عمليات الصرف",
-      value: totalDispensed,
-      icon: TrendingDown,
-      color: "text-green-600",
-      bgColor: "bg-green-100"
-    },
-    {
-      title: "أصناف تحت الحد الأدنى",
-      value: lowStockItems,
-      icon: AlertTriangle,
-      color: "text-red-600",
-      bgColor: "bg-red-100"
-    }
-  ];
-
-  // Prepare chart data
-  const departmentData = transactions?.reduce((acc, transaction) => {
-    const dept = acc.find(d => d.department === transaction.department);
-    if (dept) {
-      dept.count += 1;
-    } else {
-      acc.push({ department: transaction.department, count: 1 });
-    }
-    return acc;
-  }, [] as { department: string; count: number }[]) || [];
+  const lowStockItems = items?.filter(
+    (item) => item.quantity <= item.minQuantity
+  ) || [];
 
   return (
-    <div className="space-y-6 p-6 rtl">
-      <h1 className="text-3xl font-bold font-arabic mb-8">
-        نظام إدارة المخزون المحلي
+    <div className="p-6">
+      <h1 className="text-2xl font-bold mb-6 font-arabic">
+        لوحة التحكم
       </h1>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {stats.map((stat, index) => (
-          <Card key={index}>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground font-arabic">
-                {stat.title}
-              </CardTitle>
-              <div className={`${stat.bgColor} ${stat.color} p-2 rounded-full`}>
-                <stat.icon className="h-4 w-4" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stat.value}</div>
-            </CardContent>
-          </Card>
-        ))}
+      <div className="grid gap-6 md:grid-cols-3 mb-6">
+        <Card className="p-4">
+          <h3 className="font-arabic text-lg mb-2">إجمالي الأصناف</h3>
+          <p className="text-3xl font-bold">
+            {items?.length || 0}
+          </p>
+        </Card>
+
+        <Card className="p-4">
+          <h3 className="font-arabic text-lg mb-2">الأصناف منخفضة المخزون</h3>
+          <p className="text-3xl font-bold text-red-500">
+            {lowStockItems.length}
+          </p>
+        </Card>
+
+        <Card className="p-4">
+          <h3 className="font-arabic text-lg mb-2">المعاملات الأخيرة</h3>
+          <p className="text-3xl font-bold">
+            {transactions?.length || 0}
+          </p>
+        </Card>
       </div>
 
-      {lowStockItems > 0 && (
-        <Card className="border-red-200 bg-red-50">
-          <CardHeader>
-            <CardTitle className="text-red-700 font-arabic">
-              تنبيه المخزون
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-red-600 font-arabic">
-              يوجد {lowStockItems} صنف تحت الحد الأدنى للمخزون
-            </p>
-          </CardContent>
+      {lowStockItems.length > 0 && (
+        <Card className="p-4 mb-6 border-red-200 bg-red-50">
+          <div className="flex items-center gap-2 text-red-500 mb-4">
+            <AlertCircle className="h-5 w-5" />
+            <h3 className="font-arabic font-medium">
+              تنبيه: أصناف منخفضة المخزون
+            </h3>
+          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="font-arabic">الصنف</TableHead>
+                <TableHead className="font-arabic">الكمية الحالية</TableHead>
+                <TableHead className="font-arabic">الحد الأدنى</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {lowStockItems.map((item) => (
+                <TableRow key={item.id}>
+                  <TableCell className="font-medium font-arabic">
+                    {item.nameAr}
+                  </TableCell>
+                  <TableCell>{item.quantity}</TableCell>
+                  <TableCell>{item.minQuantity}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </Card>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="font-arabic">توزيع الصرف حسب القسم</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[300px]">
-              <ResponsiveBar
-                data={departmentData}
-                keys={['count']}
-                indexBy="department"
-                margin={{ top: 50, right: 50, bottom: 100, left: 60 }}
-                padding={0.3}
-                valueScale={{ type: 'linear' }}
-                indexScale={{ type: 'band', round: true }}
-                colors={{ scheme: 'nivo' }}
-                axisBottom={{
-                  tickSize: 5,
-                  tickPadding: 5,
-                  tickRotation: -45,
-                  legend: 'القسم',
-                  legendPosition: 'middle',
-                  legendOffset: 70
-                }}
-                axisLeft={{
-                  tickSize: 5,
-                  tickPadding: 5,
-                  tickRotation: 0,
-                  legend: 'عدد العمليات',
-                  legendPosition: 'middle',
-                  legendOffset: -40
-                }}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="font-arabic">حركة المخزون</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[300px]">
-              <ResponsiveLine
-                data={[
-                  {
-                    id: "المخزون",
-                    data: items?.map(item => ({
-                      x: item.name,
-                      y: item.quantity
-                    })) || []
-                  }
-                ]}
-                margin={{ top: 50, right: 50, bottom: 100, left: 60 }}
-                xScale={{ type: 'point' }}
-                yScale={{ type: 'linear', min: 0, max: 'auto' }}
-                axisBottom={{
-                  tickSize: 5,
-                  tickPadding: 5,
-                  tickRotation: -45,
-                  legend: 'الصنف',
-                  legendOffset: 70,
-                  legendPosition: 'middle'
-                }}
-                axisLeft={{
-                  tickSize: 5,
-                  tickPadding: 5,
-                  tickRotation: 0,
-                  legend: 'الكمية',
-                  legendOffset: -40,
-                  legendPosition: 'middle'
-                }}
-                pointSize={10}
-                pointColor={{ theme: 'background' }}
-                pointBorderWidth={2}
-                pointBorderColor={{ from: 'serieColor' }}
-                enablePointLabel={true}
-                pointLabel="y"
-                pointLabelYOffset={-12}
-              />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <Card className="p-4">
+        <h3 className="font-arabic text-lg mb-4">آخر المعاملات</h3>
+        <Table>
+          <TableCaption className="font-arabic">
+            سجل آخر 5 معاملات
+          </TableCaption>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="font-arabic">التاريخ</TableHead>
+              <TableHead className="font-arabic">القسم</TableHead>
+              <TableHead className="font-arabic">النوع</TableHead>
+              <TableHead className="font-arabic">الأصناف</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {transactions?.map((transaction) => (
+              <TableRow key={transaction.id}>
+                <TableCell>
+                  {new Date(transaction.date).toLocaleDateString("ar")}
+                </TableCell>
+                <TableCell className="font-arabic">
+                  {transaction.department}
+                </TableCell>
+                <TableCell>
+                  <Badge
+                    variant={transaction.type === "in" ? "default" : "secondary"}
+                    className="font-arabic"
+                  >
+                    {transaction.type === "in" ? "وارد" : "صادر"}
+                  </Badge>
+                </TableCell>
+                <TableCell className="font-arabic">
+                  {transaction.items.length} صنف
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Card>
     </div>
   );
-};
-
-export default Index;
+}
