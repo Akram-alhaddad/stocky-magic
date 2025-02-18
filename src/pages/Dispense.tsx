@@ -40,7 +40,7 @@ export default function Dispense() {
   const [date, setDate] = useState<Date>(new Date());
   const [department, setDepartment] = useState("");
   const [dispenseItems, setDispenseItems] = useState<DispenseItem[]>([
-    { itemId: "", quantity: 0 }
+    { itemId: "none", quantity: 0 }
   ]);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -209,7 +209,7 @@ export default function Dispense() {
                   <SelectValue placeholder="اختر القسم" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">بدون قسم</SelectItem>
+                  <SelectItem value="none">بدون قسم</SelectItem>
                   {departments.map((dept) => (
                     <SelectItem key={dept} value={dept}>
                       {dept}
@@ -259,7 +259,7 @@ export default function Dispense() {
                           <SelectValue placeholder="اختر الصنف" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">بدون صنف</SelectItem>
+                          <SelectItem value="none">بدون صنف</SelectItem>
                           {items?.map((item) => (
                             <SelectItem key={item.id} value={item.id}>
                               {item.nameAr} ({item.quantity})
@@ -280,12 +280,12 @@ export default function Dispense() {
 
                     <div className="flex-1">
                       <Label className="font-arabic mb-2">الوحدة</Label>
-                      <Select value={item.unit || ""} onValueChange={(value) => updateItem(index, 'unit', value)}>
+                      <Select value={item.unit || "none"} onValueChange={(value) => updateItem(index, 'unit', value === "none" ? undefined : value)}>
                         <SelectTrigger>
                           <SelectValue placeholder="اختر الوحدة" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">بدون وحدة</SelectItem>
+                          <SelectItem value="none">بدون وحدة</SelectItem>
                           {units.map((u) => (
                             <SelectItem key={u} value={u}>
                               {u}
@@ -315,12 +315,12 @@ export default function Dispense() {
                     </div>
                     <div>
                       <Label className="font-arabic mb-2">وحدة السعة</Label>
-                      <Select value={item.capacityUnit || ""} onValueChange={(value) => updateItem(index, 'capacityUnit', value)}>
+                      <Select value={item.capacityUnit || "none"} onValueChange={(value) => updateItem(index, 'capacityUnit', value === "none" ? undefined : value)}>
                         <SelectTrigger>
                           <SelectValue placeholder="اختر وحدة السعة" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">بدون وحدة</SelectItem>
+                          <SelectItem value="none">بدون وحدة</SelectItem>
                           {capacityUnits.map((u) => (
                             <SelectItem key={u} value={u}>
                               {u}
