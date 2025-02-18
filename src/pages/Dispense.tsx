@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getDB, departments, units, capacityUnits } from "@/lib/db";
@@ -106,61 +105,65 @@ export default function Dispense() {
 
   const generatePDF = async () => {
     const doc = new jsPDF();
+    doc.addFont("public/fonts/NotoNaskhArabic-Regular.ttf", "NotoNaskhArabic", "normal");
+    doc.setFont("NotoNaskhArabic");
     
-    // Set font for Arabic text
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(20);
+    // العنوان
+    doc.setFontSize(24);
     doc.text("أمر صرف مخزني", 105, 20, { align: "center" });
     
-    // Add header details
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "normal");
+    // المعلومات الأساسية
+    doc.setFontSize(14);
+    doc.text(`التاريخ: ${format(date, 'yyyy/MM/dd')}`, 190, 40, { align: "right" });
+    doc.text(`القسم: ${department || "بدون قسم"}`, 190, 50, { align: "right" });
+    doc.text(`اليوم: ${format(date, 'EEEE', { locale: arSA })}`, 190, 60, { align: "right" });
     
-    // Right side header
-    doc.text(`التاريخ: ${format(date, 'yyyy/MM/dd')}`, 170, 40, { align: "right" });
-    doc.text(`القسم: ${department || ""}`, 170, 50, { align: "right" });
-    doc.text(`اليوم: ${format(date, 'EEEE', { locale: arSA })}`, 170, 60, { align: "right" });
-    
-    // Content
+    // تفاصيل الأصناف
     let yPos = 80;
-    doc.text("الأصناف:", 170, yPos, { align: "right" });
+    doc.text("الأصناف:", 190, yPos, { align: "right" });
     yPos += 10;
 
-    for (const dispenseItem of dispenseItems) {
+    dispenseItems.forEach((dispenseItem, index) => {
       const item = items?.find(i => i.id === dispenseItem.itemId);
-      if (!item) continue;
+      if (!item) return;
 
-      const content = [
-        [`الصنف: ${item.nameAr}`],
-        [`الكمية: ${dispenseItem.quantity || ""} ${dispenseItem.unit || ""}`],
-        dispenseItem.capacity && [`السعة: ${dispenseItem.capacity} ${dispenseItem.capacityUnit || ""}`],
-        dispenseItem.notes && [`ملاحظات: ${dispenseItem.notes}`],
-      ].filter(Boolean);
+      doc.text(`${index + 1}. ${item.nameAr}`, 180, yPos, { align: "right" });
+      yPos += 8;
 
-      content.forEach(line => {
-        doc.text(line[0], 160, yPos, { align: "right" });
+      if (dispenseItem.quantity || dispenseItem.unit) {
+        doc.text(`الكمية: ${dispenseItem.quantity || ""} ${dispenseItem.unit || ""}`, 170, yPos, { align: "right" });
         yPos += 8;
-      });
+      }
+
+      if (dispenseItem.capacity || dispenseItem.capacityUnit) {
+        doc.text(`السعة: ${dispenseItem.capacity || ""} ${dispenseItem.capacityUnit || ""}`, 170, yPos, { align: "right" });
+        yPos += 8;
+      }
+
+      if (dispenseItem.notes) {
+        doc.text(`ملاحظات: ${dispenseItem.notes}`, 170, yPos, { align: "right" });
+        yPos += 8;
+      }
+
       yPos += 5;
-    }
+    });
     
-    // Add footer
+    // التوقيعات
     yPos = 250;
     
-    // Right side (المستلم)
+    // المستلم
     doc.text("المستلم:", 170, yPos, { align: "right" });
     doc.text("التوقيع:", 170, yPos + 20, { align: "right" });
     
-    // Left side (أمين المخزن)
+    // أمين المخزن
     doc.text("أمين المخزن:", 60, yPos, { align: "left" });
     doc.text("التوقيع:", 60, yPos + 20, { align: "left" });
     
-    // Add signature lines
+    // خطوط التوقيع
     doc.setDrawColor(0);
-    doc.line(120, yPos + 20, 170, yPos + 20); // المستلم signature line
-    doc.line(20, yPos + 20, 70, yPos + 20);   // أمين المخزن signature line
-    
-    // Save PDF
+    doc.line(120, yPos + 20, 170, yPos + 20); // خط توقيع المستلم
+    doc.line(20, yPos + 20, 70, yPos + 20);   // خط توقيع أمين المخزن
+  
     doc.save(`امر-صرف-${format(date, 'yyyy-MM-dd')}.pdf`);
   };
 

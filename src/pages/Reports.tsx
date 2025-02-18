@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ResponsiveBar } from "@nivo/bar";
 import { ResponsiveLine } from "@nivo/line";
 import { jsPDF } from "jspdf";
+import { FileDown } from "lucide-react";
 
 export default function Reports() {
   const { data: reportData } = useQuery({
@@ -45,36 +46,63 @@ export default function Reports() {
   });
 
   const generatePDF = () => {
+    // إضافة دعم للغة العربية
     const doc = new jsPDF();
+    doc.addFont("public/fonts/NotoNaskhArabic-Regular.ttf", "NotoNaskhArabic", "normal");
+    doc.setFont("NotoNaskhArabic");
     
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(20);
+    doc.setFontSize(24);
     doc.text("تقرير المخزون", 105, 20, { align: "center" });
     
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "normal");
+    doc.setFontSize(14);
     
     let yPos = 40;
     
-    // Add inventory summary
-    doc.text("ملخص المخزون", 20, yPos);
+    // ملخص المخزون
+    doc.text("ملخص المخزون:", 190, yPos, { align: "right" });
     yPos += 10;
     
     reportData?.items.forEach(item => {
-      const line = `${item.nameAr}: ${item.quantity}`;
-      doc.text(line, 30, yPos);
-      yPos += 10;
+      doc.text(`${item.nameAr}: ${item.quantity}`, 180, yPos, { align: "right" });
+      yPos += 8;
     });
     
-    // Add transactions summary
-    yPos += 10;
-    doc.text("ملخص المعاملات", 20, yPos);
+    // إضافة المزيد من التفاصيل
+    yPos += 15;
+    doc.text("إحصائيات عامة:", 190, yPos, { align: "right" });
     yPos += 10;
     
-    const totalOut = reportData?.transactions.filter(t => t.type === "out").length || 0;
-    doc.text(`إجمالي المعاملات: ${totalOut}`, 30, yPos);
+    const totalItems = reportData?.items.length || 0;
+    const lowStockItems = reportData?.items.filter(item => item.quantity <= item.minQuantity).length || 0;
+    const totalTransactions = reportData?.transactions.length || 0;
     
-    doc.save("inventory-report.pdf");
+    doc.text(`إجمالي الأصناف: ${totalItems}`, 180, yPos, { align: "right" });
+    yPos += 8;
+    doc.text(`الأصناف منخفضة المخزون: ${lowStockItems}`, 180, yPos, { align: "right" });
+    yPos += 8;
+    doc.text(`إجمالي المعاملات: ${totalTransactions}`, 180, yPos, { align: "right" });
+    
+    // إضافة التوقيعات
+    yPos = 250;
+    
+    // المستلم
+    doc.text("المستلم:", 170, yPos, { align: "right" });
+    doc.text("التوقيع:", 170, yPos + 20, { align: "right" });
+    
+    // أمين المخزن
+    doc.text("أمين المخزن:", 60, yPos, { align: "left" });
+    doc.text("التوقيع:", 60, yPos + 20, { align: "left" });
+    
+    // إضافة خطوط التوقيع
+    doc.setDrawColor(0);
+    doc.line(120, yPos + 20, 170, yPos + 20); // خط توقيع المستلم
+    doc.line(20, yPos + 20, 70, yPos + 20);   // خط توقيع أمين المخزن
+    
+    // إضافة التاريخ
+    const today = new Date();
+    doc.text(`تاريخ التقرير: ${today.toLocaleDateString('ar-SA')}`, 190, 280, { align: "right" });
+    
+    doc.save("تقرير-المخزون.pdf");
   };
 
   return (
@@ -85,6 +113,7 @@ export default function Reports() {
         </h1>
         
         <Button onClick={generatePDF}>
+          <FileDown className="ml-2 h-4 w-4" />
           تصدير PDF
         </Button>
       </div>
