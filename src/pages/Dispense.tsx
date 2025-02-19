@@ -110,39 +110,31 @@ export default function Dispense() {
         orientation: "portrait",
         unit: "mm",
         format: "a4",
-        putOnlyUsedFonts: true,
-        floatPrecision: 16
+        compress: true
       });
 
-      // إضافة الخط العربي وتعيينه كخط افتراضي
-      await doc.addFont("/fonts/NotoNaskhArabic-Regular.ttf", "NotoNaskhArabic", "normal");
+      // استخدام الخط الافتراضي
+      doc.setFont("Helvetica", "normal");
       
-      // تعيين الخط العربي
-      doc.setFont("NotoNaskhArabic");
-      doc.setR2L(true);
-
-      // العنوان
+      // تحديد حجم الخط للعنوان
       doc.setFontSize(24);
-      const title = "أمر صرف مخزني";
-      const titleWidth = doc.getStringUnitWidth(title) * doc.getFontSize() / doc.internal.scaleFactor;
-      const titleX = (doc.internal.pageSize.width - titleWidth) / 2;
-      doc.text(title, titleX, 20);
-
-      // تعيين حجم الخط للمحتوى
+      
+      // كتابة العنوان
+      doc.text("Order Form / أمر صرف", 105, 20, { align: "center" });
+      
+      // تحديد حجم الخط للمحتوى
       doc.setFontSize(12);
 
-      // المعلومات الأساسية
-      const dateText = `التاريخ: ${format(date, 'yyyy/MM/dd')}`;
-      const deptText = `القسم: ${department === "none" ? "بدون قسم" : department}`;
-      const dayText = `اليوم: ${format(date, 'EEEE', { locale: arSA })}`;
+      // كتابة المعلومات الأساسية
+      doc.text([
+        `Date / التاريخ: ${format(date, 'yyyy/MM/dd')}`,
+        `Department / القسم: ${department === "none" ? "None" : department}`,
+        `Day / اليوم: ${format(date, 'EEEE', { locale: arSA })}`
+      ], 20, 40);
 
-      doc.text(dateText, 180, 40);
-      doc.text(deptText, 180, 50);
-      doc.text(dayText, 180, 60);
-
-      // تفاصيل الأصناف
+      // كتابة تفاصيل الأصناف
       let yPos = 80;
-      doc.text("الأصناف:", 180, yPos);
+      doc.text("Items / الأصناف:", 20, yPos);
       yPos += 10;
 
       dispenseItems.forEach((dispenseItem, index) => {
@@ -151,55 +143,52 @@ export default function Dispense() {
         const item = items?.find(i => i.id === dispenseItem.itemId);
         if (!item) return;
 
+        // معلومات الصنف
+        const itemTexts = [];
+        
         // اسم الصنف
-        const itemName = `${index + 1}. ${item.nameAr}`;
-        doc.text(itemName, 170, yPos);
-        yPos += 8;
-
+        itemTexts.push(`${index + 1}. Item / الصنف: ${item.nameAr || item.nameEn}`);
+        
         // الكمية والوحدة
         if (dispenseItem.quantity || dispenseItem.unit) {
-          const quantityText = `الكمية: ${dispenseItem.quantity || ""} ${dispenseItem.unit === "none" ? "" : (dispenseItem.unit || "")}`;
-          doc.text(quantityText, 160, yPos);
-          yPos += 8;
+          itemTexts.push(`   Quantity / الكمية: ${dispenseItem.quantity || ""} ${dispenseItem.unit === "none" ? "" : (dispenseItem.unit || "")}`);
         }
 
         // السعة
         if (dispenseItem.capacity || dispenseItem.capacityUnit) {
-          const capacityText = `السعة: ${dispenseItem.capacity || ""} ${dispenseItem.capacityUnit === "none" ? "" : (dispenseItem.capacityUnit || "")}`;
-          doc.text(capacityText, 160, yPos);
-          yPos += 8;
+          itemTexts.push(`   Capacity / السعة: ${dispenseItem.capacity || ""} ${dispenseItem.capacityUnit === "none" ? "" : (dispenseItem.capacityUnit || "")}`);
         }
 
         // الملاحظات
         if (dispenseItem.notes) {
-          const notesText = `ملاحظات: ${dispenseItem.notes}`;
-          doc.text(notesText, 160, yPos);
-          yPos += 8;
+          itemTexts.push(`   Notes / ملاحظات: ${dispenseItem.notes}`);
         }
 
-        yPos += 5;
+        doc.text(itemTexts, 20, yPos);
+        yPos += 8 * itemTexts.length + 5;
       });
 
       // التوقيعات
       yPos = Math.max(yPos + 20, 220);
 
-      // جانب المستلم
-      doc.text("المستلم:", 160, yPos);
-      doc.text("التوقيع:", 160, yPos + 20);
+      // عنوان التوقيعات
+      doc.text("Signatures / التوقيعات", 105, yPos, { align: "center" });
+      yPos += 20;
 
-      // جانب أمين المخزن
-      doc.text("أمين المخزن:", 70, yPos);
-      doc.text("التوقيع:", 70, yPos + 20);
+      // المستلم
+      doc.text("Receiver / المستلم:", 30, yPos);
+      doc.text("Signature / التوقيع: _________________", 30, yPos + 10);
 
-      // خطوط التوقيع
-      doc.line(110, yPos + 20, 160, yPos + 20);
-      doc.line(20, yPos + 20, 70, yPos + 20);
+      // أمين المخزن
+      doc.text("Warehouse Keeper / أمين المخزن:", 120, yPos);
+      doc.text("Signature / التوقيع: _________________", 120, yPos + 10);
 
       // التاريخ في الأسفل
-      doc.text(`تاريخ التقرير: ${format(date, 'yyyy/MM/dd')}`, 180, yPos + 40);
+      doc.text(`Report Date / تاريخ التقرير: ${format(date, 'yyyy/MM/dd')}`, 105, yPos + 30, { align: "center" });
 
       // حفظ الملف
-      doc.save(`امر-صرف-${format(date, 'yyyy-MM-dd')}.pdf`);
+      doc.save(`order-form-${format(date, 'yyyy-MM-dd')}.pdf`);
+
     } catch (error) {
       console.error('Error generating PDF:', error);
     }
@@ -237,7 +226,7 @@ export default function Dispense() {
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-6 font-arabic">
-        أمر/طلب (صرف مخزني)
+        Order Form / أمر صرف
       </h1>
       
       <Card className="max-w-4xl mx-auto p-6">
