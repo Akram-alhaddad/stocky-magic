@@ -105,92 +105,101 @@ export default function Dispense() {
 
   const generatePDF = async () => {
     try {
-      // تهيئة مستند PDF مع الإعدادات الأساسية
+      // Create new document with RTL support
       const doc = new jsPDF({
         orientation: "portrait",
         unit: "mm",
         format: "a4",
-        compress: true
+        compress: true,
+        putOnlyUsedFonts: true,
+        floatPrecision: 16
       });
 
-      // استخدام الخط الافتراضي
+      // Set default font
       doc.setFont("Helvetica", "normal");
       
-      // تحديد حجم الخط للعنوان
-      doc.setFontSize(24);
+      // Set font sizes
+      doc.setFontSize(16);
       
-      // كتابة العنوان
-      doc.text("Order Form / أمر صرف", 105, 20, { align: "center" });
+      // Header
+      doc.text("Order Form", 105, 20, { align: "center" });
+      doc.text("أمر صرف", 105, 30, { align: "center" });
       
-      // تحديد حجم الخط للمحتوى
+      // Basic information
       doc.setFontSize(12);
-
-      // كتابة المعلومات الأساسية
       doc.text([
-        `Date / التاريخ: ${format(date, 'yyyy/MM/dd')}`,
-        `Department / القسم: ${department === "none" ? "None" : department}`,
-        `Day / اليوم: ${format(date, 'EEEE', { locale: arSA })}`
-      ], 20, 40);
+        `Date: ${format(date, 'yyyy/MM/dd')}`,
+        `Department: ${department === "none" ? "None" : department}`,
+        `Day: ${format(date, 'EEEE', { locale: arSA })}`
+      ], 20, 45);
 
-      // كتابة تفاصيل الأصناف
-      let yPos = 80;
-      doc.text("Items / الأصناف:", 20, yPos);
+      // Items header
+      let yPos = 70;
+      doc.text("Items / الأصناف", 20, yPos);
       yPos += 10;
 
+      // Items list
       dispenseItems.forEach((dispenseItem, index) => {
         if (dispenseItem.itemId === "none") return;
         
         const item = items?.find(i => i.id === dispenseItem.itemId);
         if (!item) return;
 
-        // معلومات الصنف
-        const itemTexts = [];
-        
-        // اسم الصنف
-        itemTexts.push(`${index + 1}. Item / الصنف: ${item.nameAr}`);
-        
-        // الكمية والوحدة
+        // Item information
+        doc.text(`${index + 1}. Item:`, 20, yPos);
+        doc.text(item.nameAr, 50, yPos);
+        yPos += 7;
+
+        // Quantity
         if (dispenseItem.quantity || dispenseItem.unit) {
-          itemTexts.push(`   Quantity / الكمية: ${dispenseItem.quantity || ""} ${dispenseItem.unit === "none" ? "" : (dispenseItem.unit || "")}`);
+          doc.text(`Quantity:`, 25, yPos);
+          doc.text(`${dispenseItem.quantity || ""} ${dispenseItem.unit === "none" ? "" : (dispenseItem.unit || "")}`, 50, yPos);
+          yPos += 7;
         }
 
-        // السعة
+        // Capacity
         if (dispenseItem.capacity || dispenseItem.capacityUnit) {
-          itemTexts.push(`   Capacity / السعة: ${dispenseItem.capacity || ""} ${dispenseItem.capacityUnit === "none" ? "" : (dispenseItem.capacityUnit || "")}`);
+          doc.text(`Capacity:`, 25, yPos);
+          doc.text(`${dispenseItem.capacity || ""} ${dispenseItem.capacityUnit === "none" ? "" : (dispenseItem.capacityUnit || "")}`, 50, yPos);
+          yPos += 7;
         }
 
-        // الملاحظات
+        // Notes
         if (dispenseItem.notes) {
-          itemTexts.push(`   Notes / ملاحظات: ${dispenseItem.notes}`);
+          doc.text(`Notes:`, 25, yPos);
+          doc.text(dispenseItem.notes, 50, yPos);
+          yPos += 7;
         }
 
-        doc.text(itemTexts, 20, yPos);
-        yPos += 8 * itemTexts.length + 5;
+        yPos += 5; // Extra space between items
       });
 
-      // التوقيعات
+      // Signatures section
       yPos = Math.max(yPos + 20, 220);
-
-      // عنوان التوقيعات
       doc.text("Signatures / التوقيعات", 105, yPos, { align: "center" });
       yPos += 20;
 
-      // المستلم
+      // Receiver signature
       doc.text("Receiver / المستلم:", 30, yPos);
-      doc.text("Signature / التوقيع: _________________", 30, yPos + 10);
+      doc.text("___________________", 30, yPos + 10);
 
-      // أمين المخزن
+      // Warehouse keeper signature
       doc.text("Warehouse Keeper / أمين المخزن:", 120, yPos);
-      doc.text("Signature / التوقيع: _________________", 120, yPos + 10);
+      doc.text("___________________", 120, yPos + 10);
 
-      // التاريخ في الأسفل
-      doc.text(`Report Date / تاريخ التقرير: ${format(date, 'yyyy/MM/dd')}`, 105, yPos + 30, { align: "center" });
+      // Date at bottom
+      doc.text(`Report Date: ${format(date, 'yyyy/MM/dd')}`, 105, yPos + 30, { align: "center" });
 
-      // حفظ الملف
+      // Save file
       doc.save(`order-form-${format(date, 'yyyy-MM-dd')}.pdf`);
 
     } catch (error) {
       console.error('Error generating PDF:', error);
+      toast({
+        title: "خطأ",
+        description: "حدث خطأ أثناء إنشاء ملف PDF",
+        variant: "destructive"
+      });
     }
   };
 
