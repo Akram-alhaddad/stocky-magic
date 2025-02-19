@@ -130,7 +130,7 @@ export default function Index() {
                   </Badge>
                 </TableCell>
                 <TableCell className="font-arabic">
-                  {transaction.items.length} صنف
+                  {transaction.items?.length || 0} صنف
                 </TableCell>
               </TableRow>
             ))}
