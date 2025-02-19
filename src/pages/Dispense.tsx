@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getDB, departments, units, capacityUnits } from "@/lib/db";
@@ -105,93 +106,72 @@ export default function Dispense() {
 
   const generatePDF = async () => {
     try {
-      // Create new document with RTL support
+      // إضافة خط للغة العربية
       const doc = new jsPDF({
         orientation: "portrait",
         unit: "mm",
         format: "a4",
-        compress: true,
         putOnlyUsedFonts: true,
-        floatPrecision: 16
       });
 
-      // Set default font
+      // إعداد خط للغة العربية
       doc.setFont("Helvetica", "normal");
+      doc.setR2L(true); // تفعيل الكتابة من اليمين لليسار
+
+      // العنوان
+      doc.setFontSize(20);
+      doc.text("أمر صرف", 105, 20, { align: "center" });
       
-      // Set font sizes
-      doc.setFontSize(16);
-      
-      // Header
-      doc.text("Order Form", 105, 20, { align: "center" });
-      doc.text("أمر صرف", 105, 30, { align: "center" });
-      
-      // Basic information
+      // المعلومات الأساسية
       doc.setFontSize(12);
       doc.text([
-        `Date: ${format(date, 'yyyy/MM/dd')}`,
-        `Department: ${department === "none" ? "None" : department}`,
-        `Day: ${format(date, 'EEEE', { locale: arSA })}`
-      ], 20, 45);
+        `التاريخ: ${format(date, 'yyyy/MM/dd')}`,
+        `القسم: ${department || 'غير محدد'}`,
+        `اليوم: ${format(date, 'EEEE', { locale: arSA })}`
+      ], 190, 40, { align: "right" });
 
-      // Items header
-      let yPos = 70;
-      doc.text("Items / الأصناف", 20, yPos);
+      // الأصناف
+      let yPos = 60;
+      doc.text("الأصناف:", 190, yPos, { align: "right" });
       yPos += 10;
 
-      // Items list
       dispenseItems.forEach((dispenseItem, index) => {
         if (dispenseItem.itemId === "none") return;
         
         const item = items?.find(i => i.id === dispenseItem.itemId);
         if (!item) return;
 
-        // Item information
-        doc.text(`${index + 1}. Item:`, 20, yPos);
-        doc.text(item.nameAr, 50, yPos);
+        doc.text(`${index + 1}. ${item.nameAr}`, 180, yPos, { align: "right" });
         yPos += 7;
 
-        // Quantity
         if (dispenseItem.quantity || dispenseItem.unit) {
-          doc.text(`Quantity:`, 25, yPos);
-          doc.text(`${dispenseItem.quantity || ""} ${dispenseItem.unit === "none" ? "" : (dispenseItem.unit || "")}`, 50, yPos);
+          doc.text(`الكمية: ${dispenseItem.quantity} ${dispenseItem.unit || ''}`, 170, yPos, { align: "right" });
           yPos += 7;
         }
 
-        // Capacity
         if (dispenseItem.capacity || dispenseItem.capacityUnit) {
-          doc.text(`Capacity:`, 25, yPos);
-          doc.text(`${dispenseItem.capacity || ""} ${dispenseItem.capacityUnit === "none" ? "" : (dispenseItem.capacityUnit || "")}`, 50, yPos);
+          doc.text(`السعة: ${dispenseItem.capacity} ${dispenseItem.capacityUnit || ''}`, 170, yPos, { align: "right" });
           yPos += 7;
         }
 
-        // Notes
         if (dispenseItem.notes) {
-          doc.text(`Notes:`, 25, yPos);
-          doc.text(dispenseItem.notes, 50, yPos);
+          doc.text(`ملاحظات: ${dispenseItem.notes}`, 170, yPos, { align: "right" });
           yPos += 7;
         }
 
-        yPos += 5; // Extra space between items
+        yPos += 5;
       });
 
-      // Signatures section
+      // التوقيعات
       yPos = Math.max(yPos + 20, 220);
-      doc.text("Signatures / التوقيعات", 105, yPos, { align: "center" });
+      doc.text("التوقيعات", 105, yPos, { align: "center" });
       yPos += 20;
 
-      // Receiver signature
-      doc.text("Receiver / المستلم:", 30, yPos);
-      doc.text("___________________", 30, yPos + 10);
+      doc.text("المستلم: _________________", 170, yPos, { align: "right" });
+      doc.text("أمين المخزن: _________________", 50, yPos, { align: "left" });
 
-      // Warehouse keeper signature
-      doc.text("Warehouse Keeper / أمين المخزن:", 120, yPos);
-      doc.text("___________________", 120, yPos + 10);
-
-      // Date at bottom
-      doc.text(`Report Date: ${format(date, 'yyyy/MM/dd')}`, 105, yPos + 30, { align: "center" });
-
-      // Save file
-      doc.save(`order-form-${format(date, 'yyyy-MM-dd')}.pdf`);
+      // حفظ الملف
+      doc.save(`امر-صرف-${format(date, 'yyyy-MM-dd')}.pdf`);
 
     } catch (error) {
       console.error('Error generating PDF:', error);
@@ -204,10 +184,9 @@ export default function Dispense() {
   };
 
   const handleSave = () => {
-    // إزالة التحقق من الحقول المطلوبة
     dispenseItemMutation.mutate({
-      items: dispenseItems,
-      department: department || "", // السماح بقيمة فارغة
+      items: dispenseItems.filter(item => item.itemId !== "none"),
+      department: department || "",
       date
     });
   };
@@ -235,7 +214,7 @@ export default function Dispense() {
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-6 font-arabic">
-        Order Form / أمر صرف
+        أمر صرف
       </h1>
       
       <Card className="max-w-4xl mx-auto p-6">
