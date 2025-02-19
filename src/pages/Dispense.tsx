@@ -104,87 +104,105 @@ export default function Dispense() {
   });
 
   const generatePDF = async () => {
-    const doc = new jsPDF({
-      orientation: "portrait",
-      unit: "mm",
-      format: "a4"
-    });
+    try {
+      // تهيئة مستند PDF مع الإعدادات الأساسية
+      const doc = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+        putOnlyUsedFonts: true,
+        floatPrecision: 16
+      });
 
-    // إنشاء مستند PDF مع التوجيه من اليمين إلى اليسار
-    doc.addFont("public/fonts/NotoNaskhArabic-Regular.ttf", "NotoNaskhArabic", "normal");
-    doc.setFont("NotoNaskhArabic");
-    
-    // تعيين حجم الخط للعنوان
-    doc.setFontSize(24);
-    doc.text("أمر صرف مخزني", 105, 20, { align: "center" });
-    
-    // تعيين حجم الخط للمحتوى
-    doc.setFontSize(12);
-    
-    // المعلومات الأساسية في الأعلى
-    doc.text(`التاريخ: ${format(date, 'yyyy/MM/dd')}`, 190, 40, { align: "right" });
-    doc.text(`القسم: ${department === "none" ? "بدون قسم" : department}`, 190, 50, { align: "right" });
-    doc.text(`اليوم: ${format(date, 'EEEE', { locale: arSA })}`, 190, 60, { align: "right" });
-    
-    // تفاصيل الأصناف
-    let yPos = 80;
-    doc.text("الأصناف:", 190, yPos, { align: "right" });
-    yPos += 10;
-
-    dispenseItems.forEach((dispenseItem, index) => {
-      if (dispenseItem.itemId === "none") return;
+      // إضافة الخط العربي وتعيينه كخط افتراضي
+      await doc.addFont("/fonts/NotoNaskhArabic-Regular.ttf", "NotoNaskhArabic", "normal");
       
-      const item = items?.find(i => i.id === dispenseItem.itemId);
-      if (!item) return;
+      // تعيين الخط العربي
+      doc.setFont("NotoNaskhArabic");
+      doc.setR2L(true);
 
-      // استخدام نقاط لترقيم الأصناف
-      doc.text(`${index + 1}. ${item.nameAr}`, 180, yPos, { align: "right" });
-      yPos += 8;
+      // العنوان
+      doc.setFontSize(24);
+      const title = "أمر صرف مخزني";
+      const titleWidth = doc.getStringUnitWidth(title) * doc.getFontSize() / doc.internal.scaleFactor;
+      const titleX = (doc.internal.pageSize.width - titleWidth) / 2;
+      doc.text(title, titleX, 20);
 
-      // معلومات الكمية والوحدة
-      if (dispenseItem.quantity || dispenseItem.unit) {
-        const quantityText = `الكمية: ${dispenseItem.quantity || ""} ${dispenseItem.unit === "none" ? "" : (dispenseItem.unit || "")}`;
-        doc.text(quantityText, 170, yPos, { align: "right" });
+      // تعيين حجم الخط للمحتوى
+      doc.setFontSize(12);
+
+      // المعلومات الأساسية
+      const dateText = `التاريخ: ${format(date, 'yyyy/MM/dd')}`;
+      const deptText = `القسم: ${department === "none" ? "بدون قسم" : department}`;
+      const dayText = `اليوم: ${format(date, 'EEEE', { locale: arSA })}`;
+
+      doc.text(dateText, 180, 40);
+      doc.text(deptText, 180, 50);
+      doc.text(dayText, 180, 60);
+
+      // تفاصيل الأصناف
+      let yPos = 80;
+      doc.text("الأصناف:", 180, yPos);
+      yPos += 10;
+
+      dispenseItems.forEach((dispenseItem, index) => {
+        if (dispenseItem.itemId === "none") return;
+        
+        const item = items?.find(i => i.id === dispenseItem.itemId);
+        if (!item) return;
+
+        // اسم الصنف
+        const itemName = `${index + 1}. ${item.nameAr}`;
+        doc.text(itemName, 170, yPos);
         yPos += 8;
-      }
 
-      // معلومات السعة
-      if (dispenseItem.capacity || dispenseItem.capacityUnit) {
-        const capacityText = `السعة: ${dispenseItem.capacity || ""} ${dispenseItem.capacityUnit === "none" ? "" : (dispenseItem.capacityUnit || "")}`;
-        doc.text(capacityText, 170, yPos, { align: "right" });
-        yPos += 8;
-      }
+        // الكمية والوحدة
+        if (dispenseItem.quantity || dispenseItem.unit) {
+          const quantityText = `الكمية: ${dispenseItem.quantity || ""} ${dispenseItem.unit === "none" ? "" : (dispenseItem.unit || "")}`;
+          doc.text(quantityText, 160, yPos);
+          yPos += 8;
+        }
 
-      // الملاحظات
-      if (dispenseItem.notes) {
-        doc.text(`ملاحظات: ${dispenseItem.notes}`, 170, yPos, { align: "right" });
-        yPos += 8;
-      }
+        // السعة
+        if (dispenseItem.capacity || dispenseItem.capacityUnit) {
+          const capacityText = `السعة: ${dispenseItem.capacity || ""} ${dispenseItem.capacityUnit === "none" ? "" : (dispenseItem.capacityUnit || "")}`;
+          doc.text(capacityText, 160, yPos);
+          yPos += 8;
+        }
 
-      yPos += 5;
-    });
-    
-    // التوقيعات في أسفل الصفحة
-    yPos = Math.max(yPos + 20, 220); // ضمان مساحة كافية للتوقيعات
-    
-    // جانب المستلم (يمين)
-    doc.text("المستلم:", 170, yPos, { align: "right" });
-    doc.text("التوقيع:", 170, yPos + 20, { align: "right" });
-    
-    // جانب أمين المخزن (يسار)
-    doc.text("أمين المخزن:", 60, yPos, { align: "left" });
-    doc.text("التوقيع:", 60, yPos + 20, { align: "left" });
-    
-    // إضافة خطوط التوقيع
-    doc.setDrawColor(0);
-    doc.line(120, yPos + 20, 170, yPos + 20); // خط توقيع المستلم
-    doc.line(20, yPos + 20, 70, yPos + 20);   // خط توقيع أمين المخزن
+        // الملاحظات
+        if (dispenseItem.notes) {
+          const notesText = `ملاحظات: ${dispenseItem.notes}`;
+          doc.text(notesText, 160, yPos);
+          yPos += 8;
+        }
 
-    // إضافة التاريخ في أسفل الصفحة
-    doc.text(`تاريخ التقرير: ${format(date, 'yyyy/MM/dd')}`, 190, yPos + 40, { align: "right" });
-    
-    // حفظ الملف
-    doc.save(`امر-صرف-${format(date, 'yyyy-MM-dd')}.pdf`);
+        yPos += 5;
+      });
+
+      // التوقيعات
+      yPos = Math.max(yPos + 20, 220);
+
+      // جانب المستلم
+      doc.text("المستلم:", 160, yPos);
+      doc.text("التوقيع:", 160, yPos + 20);
+
+      // جانب أمين المخزن
+      doc.text("أمين المخزن:", 70, yPos);
+      doc.text("التوقيع:", 70, yPos + 20);
+
+      // خطوط التوقيع
+      doc.line(110, yPos + 20, 160, yPos + 20);
+      doc.line(20, yPos + 20, 70, yPos + 20);
+
+      // التاريخ في الأسفل
+      doc.text(`تاريخ التقرير: ${format(date, 'yyyy/MM/dd')}`, 180, yPos + 40);
+
+      // حفظ الملف
+      doc.save(`امر-صرف-${format(date, 'yyyy-MM-dd')}.pdf`);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+    }
   };
 
   const handleSave = () => {
