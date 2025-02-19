@@ -147,7 +147,7 @@ export default function Dispense() {
         const itemTexts = [];
         
         // اسم الصنف
-        itemTexts.push(`${index + 1}. Item / الصنف: ${item.nameAr || item.nameEn}`);
+        itemTexts.push(`${index + 1}. Item / الصنف: ${item.nameAr}`);
         
         // الكمية والوحدة
         if (dispenseItem.quantity || dispenseItem.unit) {

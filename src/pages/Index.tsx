@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { AlertCircle } from "lucide-react";
 
 export default function Index() {
-  const { data: items } = useQuery({
+  const { data: items = [] } = useQuery({
     queryKey: ["items"],
     queryFn: async () => {
       const db = await getDB();
@@ -23,7 +23,7 @@ export default function Index() {
     }
   });
 
-  const { data: transactions } = useQuery({
+  const { data: transactions = [] } = useQuery({
     queryKey: ["recent-transactions"],
     queryFn: async () => {
       const db = await getDB();
@@ -34,9 +34,9 @@ export default function Index() {
     }
   });
 
-  const lowStockItems = items?.filter(
+  const lowStockItems = items.filter(
     (item) => item.quantity <= item.minQuantity
-  ) || [];
+  );
 
   return (
     <div className="p-6">
@@ -48,7 +48,7 @@ export default function Index() {
         <Card className="p-4">
           <h3 className="font-arabic text-lg mb-2">إجمالي الأصناف</h3>
           <p className="text-3xl font-bold">
-            {items?.length || 0}
+            {items.length}
           </p>
         </Card>
 
@@ -62,7 +62,7 @@ export default function Index() {
         <Card className="p-4">
           <h3 className="font-arabic text-lg mb-2">المعاملات الأخيرة</h3>
           <p className="text-3xl font-bold">
-            {transactions?.length || 0}
+            {transactions.length}
           </p>
         </Card>
       </div>
@@ -113,7 +113,7 @@ export default function Index() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {transactions?.map((transaction) => (
+            {transactions.map((transaction) => (
               <TableRow key={transaction.id}>
                 <TableCell>
                   {new Date(transaction.date).toLocaleDateString("ar")}
