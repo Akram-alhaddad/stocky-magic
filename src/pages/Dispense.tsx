@@ -104,18 +104,26 @@ export default function Dispense() {
   });
 
   const generatePDF = async () => {
-    const doc = new jsPDF();
+    const doc = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4"
+    });
+
+    // إنشاء مستند PDF مع التوجيه من اليمين إلى اليسار
     doc.addFont("public/fonts/NotoNaskhArabic-Regular.ttf", "NotoNaskhArabic", "normal");
     doc.setFont("NotoNaskhArabic");
     
-    // العنوان
+    // تعيين حجم الخط للعنوان
     doc.setFontSize(24);
     doc.text("أمر صرف مخزني", 105, 20, { align: "center" });
     
-    // المعلومات الأساسية
-    doc.setFontSize(14);
+    // تعيين حجم الخط للمحتوى
+    doc.setFontSize(12);
+    
+    // المعلومات الأساسية في الأعلى
     doc.text(`التاريخ: ${format(date, 'yyyy/MM/dd')}`, 190, 40, { align: "right" });
-    doc.text(`القسم: ${department || "بدون قسم"}`, 190, 50, { align: "right" });
+    doc.text(`القسم: ${department === "none" ? "بدون قسم" : department}`, 190, 50, { align: "right" });
     doc.text(`اليوم: ${format(date, 'EEEE', { locale: arSA })}`, 190, 60, { align: "right" });
     
     // تفاصيل الأصناف
@@ -124,22 +132,30 @@ export default function Dispense() {
     yPos += 10;
 
     dispenseItems.forEach((dispenseItem, index) => {
+      if (dispenseItem.itemId === "none") return;
+      
       const item = items?.find(i => i.id === dispenseItem.itemId);
       if (!item) return;
 
+      // استخدام نقاط لترقيم الأصناف
       doc.text(`${index + 1}. ${item.nameAr}`, 180, yPos, { align: "right" });
       yPos += 8;
 
+      // معلومات الكمية والوحدة
       if (dispenseItem.quantity || dispenseItem.unit) {
-        doc.text(`الكمية: ${dispenseItem.quantity || ""} ${dispenseItem.unit || ""}`, 170, yPos, { align: "right" });
+        const quantityText = `الكمية: ${dispenseItem.quantity || ""} ${dispenseItem.unit === "none" ? "" : (dispenseItem.unit || "")}`;
+        doc.text(quantityText, 170, yPos, { align: "right" });
         yPos += 8;
       }
 
+      // معلومات السعة
       if (dispenseItem.capacity || dispenseItem.capacityUnit) {
-        doc.text(`السعة: ${dispenseItem.capacity || ""} ${dispenseItem.capacityUnit || ""}`, 170, yPos, { align: "right" });
+        const capacityText = `السعة: ${dispenseItem.capacity || ""} ${dispenseItem.capacityUnit === "none" ? "" : (dispenseItem.capacityUnit || "")}`;
+        doc.text(capacityText, 170, yPos, { align: "right" });
         yPos += 8;
       }
 
+      // الملاحظات
       if (dispenseItem.notes) {
         doc.text(`ملاحظات: ${dispenseItem.notes}`, 170, yPos, { align: "right" });
         yPos += 8;
@@ -148,22 +164,26 @@ export default function Dispense() {
       yPos += 5;
     });
     
-    // التوقيعات
-    yPos = 250;
+    // التوقيعات في أسفل الصفحة
+    yPos = Math.max(yPos + 20, 220); // ضمان مساحة كافية للتوقيعات
     
-    // المستلم
+    // جانب المستلم (يمين)
     doc.text("المستلم:", 170, yPos, { align: "right" });
     doc.text("التوقيع:", 170, yPos + 20, { align: "right" });
     
-    // أمين المخزن
+    // جانب أمين المخزن (يسار)
     doc.text("أمين المخزن:", 60, yPos, { align: "left" });
     doc.text("التوقيع:", 60, yPos + 20, { align: "left" });
     
-    // خطوط التوقيع
+    // إضافة خطوط التوقيع
     doc.setDrawColor(0);
     doc.line(120, yPos + 20, 170, yPos + 20); // خط توقيع المستلم
     doc.line(20, yPos + 20, 70, yPos + 20);   // خط توقيع أمين المخزن
-  
+
+    // إضافة التاريخ في أسفل الصفحة
+    doc.text(`تاريخ التقرير: ${format(date, 'yyyy/MM/dd')}`, 190, yPos + 40, { align: "right" });
+    
+    // حفظ الملف
     doc.save(`امر-صرف-${format(date, 'yyyy-MM-dd')}.pdf`);
   };
 
