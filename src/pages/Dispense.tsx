@@ -44,7 +44,7 @@ interface DispenseItem {
 
 export default function Dispense() {
   const [date, setDate] = useState<Date>(new Date());
-  const [department, setDepartment] = useState("");
+  const [department, setDepartment] = useState("none");
   const [dispenseItems, setDispenseItems] = useState<DispenseItem[]>(
     Array(10).fill({ itemId: "", quantity: 0 })
   );
@@ -138,7 +138,7 @@ export default function Dispense() {
       doc.text(`التاريخ: ${format(date, 'yyyy/MM/dd')}`, 250, 30);
       doc.text(`القسم: ${department || 'غير محدد'}`, 250, 40);
 
-      // رسم الجدو��
+      // رسم الجدو////
       const startY = 50;
       const cellHeight = 10;
       const pageWidth = doc.internal.pageSize.getWidth();
@@ -288,11 +288,12 @@ export default function Dispense() {
                   <TableRow key={index}>
                     <TableCell>{index + 1}</TableCell>
                     <TableCell>
-                      <Select value={item.itemId} onValueChange={(value) => updateItem(index, 'itemId', value)}>
+                      <Select value={item.itemId || "none"} onValueChange={(value) => updateItem(index, 'itemId', value === "none" ? "" : value)}>
                         <SelectTrigger>
                           <SelectValue placeholder="اختر الصنف" />
                         </SelectTrigger>
                         <SelectContent>
+                          <SelectItem value="none">اختر الصنف</SelectItem>
                           {items?.map((item) => (
                             <SelectItem key={item.id} value={item.id}>
                               {item.nameAr} ({item.quantity})
