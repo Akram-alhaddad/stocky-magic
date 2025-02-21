@@ -115,51 +115,56 @@ export default function Dispense() {
 
   const generatePDF = async () => {
     try {
-      const fontPath = "https://raw.githubusercontent.com/amiri-typefaces/amiri/master/amiri-regular.ttf";
-      
+      // استخدام المكتبة مع الإعدادات الصحيحة للغة العربية
       const doc = new jsPDF({
         orientation: "landscape",
         unit: "mm",
         format: "a4",
       });
 
-      // Add Arabic font
-      doc.addFont(fontPath, "Amiri", "normal");
-      doc.setFont("Amiri");
+      // إعداد خصائص الوثيقة
       doc.setR2L(true);
+      doc.setLanguage("ar");
 
-      // Header
-      doc.setFontSize(24);
-      doc.text("أمر صرف مخزني", 148, 20, { align: "center" });
-      
-      // Department and Date
+      // تحديد نمط الخط والحجم
+      doc.setFont("helvetica");
+      doc.setFontSize(14);
+
+      // كتابة العنوان
+      doc.text("أمر صرف مخزني", 150, 20);
+
+      // معلومات الرأس
       doc.setFontSize(12);
-      doc.text(`القسم: ${department || 'غير محدد'}`, 250, 35);
-      doc.text(`التاريخ: ${format(date, 'yyyy/MM/dd')}`, 250, 42);
-      doc.text(`اليوم: ${format(date, 'EEEE', { locale: arSA })}`, 250, 49);
+      const today = new Date();
+      doc.text(`التاريخ: ${format(date, 'yyyy/MM/dd')}`, 250, 30);
+      doc.text(`القسم: ${department || 'غير محدد'}`, 250, 40);
 
-      // Table headers
-      const headers = ["م", "الصنف", "الوحدة", "الكمية", "العبوة والسعة", "ملاحظات"];
-      let y = 60;
-      
-      // Draw table header
+      // رسم الجدول
+      const startY = 50;
+      const cellHeight = 10;
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const colWidth = pageWidth / 6;
+
+      // عناوين الأعمدة
       doc.setFillColor(240, 240, 240);
-      doc.rect(20, y, 257, 10, "F");
+      doc.rect(10, startY, pageWidth - 20, cellHeight, 'F');
+      
+      const headers = ["م", "الصنف", "الوحدة", "الكمية", "العبوة والسعة", "ملاحظات"];
       headers.forEach((header, i) => {
-        const x = 257 - (i * (257/6)) + 20;
-        doc.text(header, x - (257/12), y + 7);
+        doc.text(header, pageWidth - (i * colWidth) - 15, startY + 7);
       });
 
-      // Table content
-      y += 10;
-      const validItems = dispenseItems.filter(item => item.itemId);
+      // بيانات الجدول
+      let currentY = startY + cellHeight;
+      const validItems = dispenseItems.filter(item => item.itemId && item.quantity > 0);
+      
       validItems.forEach((item, index) => {
-        const dbItem = items?.find(i => i.id === item.itemId);
-        if (!dbItem) return;
+        const foundItem = items?.find(i => i.id === item.itemId);
+        if (!foundItem) return;
 
         const rowData = [
           (index + 1).toString(),
-          dbItem.nameAr,
+          foundItem.nameAr,
           item.unit || "",
           item.quantity.toString(),
           `${item.capacity || ""} ${item.capacityUnit || ""}`,
@@ -167,21 +172,23 @@ export default function Dispense() {
         ];
 
         rowData.forEach((text, i) => {
-          const x = 257 - (i * (257/6)) + 20;
-          doc.text(text, x - (257/12), y + 7);
+          doc.text(text, pageWidth - (i * colWidth) - 15, currentY + 7);
         });
 
-        y += 10;
+        // رسم خطوط الخلايا
+        doc.rect(10, currentY, pageWidth - 20, cellHeight);
+        currentY += cellHeight;
       });
 
-      // Signatures
-      y = 180;
-      doc.text("التوقيعات:", 250, y);
-      y += 10;
-      doc.text("المستلم: ________________", 250, y);
-      doc.text("أمين المخزن: ________________", 120, y);
+      // التوقيعات
+      currentY += 20;
+      doc.text("التوقيعات:", 150, currentY);
+      currentY += 10;
+      doc.text("المستلم: ________________", 250, currentY);
+      doc.text("أمين المخزن: ________________", 100, currentY);
 
-      doc.save(`امر-صرف-${format(date, 'yyyy-MM-dd')}.pdf`);
+      // حفظ الملف
+      doc.save(`أمر-صرف-${format(date, 'yyyy-MM-dd')}.pdf`);
 
     } catch (error) {
       console.error('Error generating PDF:', error);
