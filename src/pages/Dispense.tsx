@@ -6,7 +6,6 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { arSA } from "date-fns/locale";
@@ -17,6 +16,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   Popover,
   PopoverContent,
@@ -39,9 +46,9 @@ interface DispenseItem {
 export default function Dispense() {
   const [date, setDate] = useState<Date>(new Date());
   const [department, setDepartment] = useState("");
-  const [dispenseItems, setDispenseItems] = useState<DispenseItem[]>([
-    { itemId: "none", quantity: 0 }
-  ]);
+  const [dispenseItems, setDispenseItems] = useState<DispenseItem[]>(
+    Array(10).fill({ itemId: "", quantity: 0 })
+  );
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -57,8 +64,10 @@ export default function Dispense() {
     mutationFn: async ({ items, department, date }: { items: DispenseItem[], department: string, date: Date }) => {
       const db = await getDB();
       
+      const validItems = items.filter(item => item.itemId && item.quantity > 0);
+      
       // Validate quantities
-      for (const dispenseItem of items) {
+      for (const dispenseItem of validItems) {
         const item = await db.get("items", dispenseItem.itemId);
         if (!item) throw new Error("الصنف غير موجود");
         if (item.quantity < dispenseItem.quantity) {
@@ -67,7 +76,7 @@ export default function Dispense() {
       }
       
       // Update quantities
-      for (const dispenseItem of items) {
+      for (const dispenseItem of validItems) {
         const item = await db.get("items", dispenseItem.itemId);
         await db.put("items", {
           ...item,
@@ -82,7 +91,7 @@ export default function Dispense() {
         id: transactionId,
         date,
         department,
-        items,
+        items: validItems,
         type: "out"
       });
       
@@ -106,71 +115,72 @@ export default function Dispense() {
 
   const generatePDF = async () => {
     try {
-      // إضافة خط للغة العربية
+      const fontPath = "https://raw.githubusercontent.com/amiri-typefaces/amiri/master/amiri-regular.ttf";
+      
       const doc = new jsPDF({
-        orientation: "portrait",
+        orientation: "landscape",
         unit: "mm",
         format: "a4",
-        putOnlyUsedFonts: true,
       });
 
-      // إعداد خط للغة العربية
-      doc.setFont("Helvetica", "normal");
-      doc.setR2L(true); // تفعيل الكتابة من اليمين لليسار
+      // Add Arabic font
+      doc.addFont(fontPath, "Amiri", "normal");
+      doc.setFont("Amiri");
+      doc.setR2L(true);
 
-      // العنوان
-      doc.setFontSize(20);
-      doc.text("أمر صرف", 105, 20, { align: "center" });
+      // Header
+      doc.setFontSize(24);
+      doc.text("أمر صرف مخزني", 148, 20, { align: "center" });
       
-      // المعلومات الأساسية
+      // Department and Date
       doc.setFontSize(12);
-      doc.text([
-        `التاريخ: ${format(date, 'yyyy/MM/dd')}`,
-        `القسم: ${department || 'غير محدد'}`,
-        `اليوم: ${format(date, 'EEEE', { locale: arSA })}`
-      ], 190, 40, { align: "right" });
+      doc.text(`القسم: ${department || 'غير محدد'}`, 250, 35);
+      doc.text(`التاريخ: ${format(date, 'yyyy/MM/dd')}`, 250, 42);
+      doc.text(`اليوم: ${format(date, 'EEEE', { locale: arSA })}`, 250, 49);
 
-      // الأصناف
-      let yPos = 60;
-      doc.text("الأصناف:", 190, yPos, { align: "right" });
-      yPos += 10;
-
-      dispenseItems.forEach((dispenseItem, index) => {
-        if (dispenseItem.itemId === "none") return;
-        
-        const item = items?.find(i => i.id === dispenseItem.itemId);
-        if (!item) return;
-
-        doc.text(`${index + 1}. ${item.nameAr}`, 180, yPos, { align: "right" });
-        yPos += 7;
-
-        if (dispenseItem.quantity || dispenseItem.unit) {
-          doc.text(`الكمية: ${dispenseItem.quantity} ${dispenseItem.unit || ''}`, 170, yPos, { align: "right" });
-          yPos += 7;
-        }
-
-        if (dispenseItem.capacity || dispenseItem.capacityUnit) {
-          doc.text(`السعة: ${dispenseItem.capacity} ${dispenseItem.capacityUnit || ''}`, 170, yPos, { align: "right" });
-          yPos += 7;
-        }
-
-        if (dispenseItem.notes) {
-          doc.text(`ملاحظات: ${dispenseItem.notes}`, 170, yPos, { align: "right" });
-          yPos += 7;
-        }
-
-        yPos += 5;
+      // Table headers
+      const headers = ["م", "الصنف", "الوحدة", "الكمية", "العبوة والسعة", "ملاحظات"];
+      let y = 60;
+      
+      // Draw table header
+      doc.setFillColor(240, 240, 240);
+      doc.rect(20, y, 257, 10, "F");
+      headers.forEach((header, i) => {
+        const x = 257 - (i * (257/6)) + 20;
+        doc.text(header, x - (257/12), y + 7);
       });
 
-      // التوقيعات
-      yPos = Math.max(yPos + 20, 220);
-      doc.text("التوقيعات", 105, yPos, { align: "center" });
-      yPos += 20;
+      // Table content
+      y += 10;
+      const validItems = dispenseItems.filter(item => item.itemId);
+      validItems.forEach((item, index) => {
+        const dbItem = items?.find(i => i.id === item.itemId);
+        if (!dbItem) return;
 
-      doc.text("المستلم: _________________", 170, yPos, { align: "right" });
-      doc.text("أمين المخزن: _________________", 50, yPos, { align: "left" });
+        const rowData = [
+          (index + 1).toString(),
+          dbItem.nameAr,
+          item.unit || "",
+          item.quantity.toString(),
+          `${item.capacity || ""} ${item.capacityUnit || ""}`,
+          item.notes || ""
+        ];
 
-      // حفظ الملف
+        rowData.forEach((text, i) => {
+          const x = 257 - (i * (257/6)) + 20;
+          doc.text(text, x - (257/12), y + 7);
+        });
+
+        y += 10;
+      });
+
+      // Signatures
+      y = 180;
+      doc.text("التوقيعات:", 250, y);
+      y += 10;
+      doc.text("المستلم: ________________", 250, y);
+      doc.text("أمين المخزن: ________________", 120, y);
+
       doc.save(`امر-صرف-${format(date, 'yyyy-MM-dd')}.pdf`);
 
     } catch (error) {
@@ -185,7 +195,7 @@ export default function Dispense() {
 
   const handleSave = () => {
     dispenseItemMutation.mutate({
-      items: dispenseItems.filter(item => item.itemId !== "none"),
+      items: dispenseItems.filter(item => item.itemId && item.quantity > 0),
       department: department || "",
       date
     });
@@ -193,16 +203,6 @@ export default function Dispense() {
 
   const handlePrint = () => {
     window.print();
-  };
-
-  const addItem = () => {
-    setDispenseItems([...dispenseItems, { itemId: "", quantity: 0 }]);
-  };
-
-  const removeItem = (index: number) => {
-    if (dispenseItems.length > 1) {
-      setDispenseItems(dispenseItems.filter((_, i) => i !== index));
-    }
   };
 
   const updateItem = (index: number, field: keyof DispenseItem, value: any) => {
@@ -214,11 +214,11 @@ export default function Dispense() {
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-6 font-arabic">
-        أمر صرف
+        أمر صرف مخزني
       </h1>
       
-      <Card className="max-w-4xl mx-auto p-6">
-        <div className="space-y-4">
+      <Card className="max-w-7xl mx-auto p-6">
+        <div className="space-y-6">
           <div className="flex gap-4">
             <div className="flex-1">
               <Label className="font-arabic mb-2">القسم</Label>
@@ -265,19 +265,29 @@ export default function Dispense() {
             </div>
           </div>
 
-          <div className="space-y-4">
-            {dispenseItems.map((item, index) => (
-              <Card key={index} className="p-4">
-                <div className="grid gap-4">
-                  <div className="flex gap-4 items-start">
-                    <div className="flex-1">
-                      <Label className="font-arabic mb-2">الصنف</Label>
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-right">م</TableHead>
+                  <TableHead className="text-right">الصنف</TableHead>
+                  <TableHead className="text-right">الوحدة</TableHead>
+                  <TableHead className="text-right">الكمية</TableHead>
+                  <TableHead className="text-right">العبوة والسعة</TableHead>
+                  <TableHead className="text-right">ملاحظات</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {dispenseItems.map((item, index) => (
+                  <TableRow key={index}>
+                    <TableCell>{index + 1}</TableCell>
+                    <TableCell>
                       <Select value={item.itemId} onValueChange={(value) => updateItem(index, 'itemId', value)}>
                         <SelectTrigger>
                           <SelectValue placeholder="اختر الصنف" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="none">بدون صنف</SelectItem>
+                          <SelectItem value="">بدون صنف</SelectItem>
                           {items?.map((item) => (
                             <SelectItem key={item.id} value={item.id}>
                               {item.nameAr} ({item.quantity})
@@ -285,25 +295,14 @@ export default function Dispense() {
                           ))}
                         </SelectContent>
                       </Select>
-                    </div>
-
-                    <div className="flex-1">
-                      <Label className="font-arabic mb-2">الكمية</Label>
-                      <Input
-                        type="number"
-                        value={item.quantity || ""}
-                        onChange={(e) => updateItem(index, 'quantity', e.target.value ? Number(e.target.value) : undefined)}
-                      />
-                    </div>
-
-                    <div className="flex-1">
-                      <Label className="font-arabic mb-2">الوحدة</Label>
-                      <Select value={item.unit || "none"} onValueChange={(value) => updateItem(index, 'unit', value === "none" ? undefined : value)}>
+                    </TableCell>
+                    <TableCell>
+                      <Select value={item.unit || ""} onValueChange={(value) => updateItem(index, 'unit', value)}>
                         <SelectTrigger>
                           <SelectValue placeholder="اختر الوحدة" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="none">بدون وحدة</SelectItem>
+                          <SelectItem value="">بدون وحدة</SelectItem>
                           {units.map((u) => (
                             <SelectItem key={u} value={u}>
                               {u}
@@ -311,61 +310,49 @@ export default function Dispense() {
                           ))}
                         </SelectContent>
                       </Select>
-                    </div>
-
-                    <Button
-                      variant="destructive"
-                      size="icon"
-                      className="mt-8"
-                      onClick={() => removeItem(index)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label className="font-arabic mb-2">السعة</Label>
+                    </TableCell>
+                    <TableCell>
                       <Input
-                        value={item.capacity || ""}
-                        onChange={(e) => updateItem(index, 'capacity', e.target.value)}
+                        type="number"
+                        value={item.quantity || ""}
+                        onChange={(e) => updateItem(index, 'quantity', e.target.value ? Number(e.target.value) : 0)}
+                        className="w-24"
                       />
-                    </div>
-                    <div>
-                      <Label className="font-arabic mb-2">وحدة السعة</Label>
-                      <Select value={item.capacityUnit || "none"} onValueChange={(value) => updateItem(index, 'capacityUnit', value === "none" ? undefined : value)}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="اختر وحدة السعة" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">بدون وحدة</SelectItem>
-                          {capacityUnits.map((u) => (
-                            <SelectItem key={u} value={u}>
-                              {u}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label className="font-arabic mb-2">ملاحظات</Label>
-                    <Textarea
-                      value={item.notes || ""}
-                      onChange={(e) => updateItem(index, 'notes', e.target.value)}
-                      placeholder="أدخل الملاحظات هنا"
-                      className="font-arabic"
-                    />
-                  </div>
-                </div>
-              </Card>
-            ))}
-
-            <Button onClick={addItem} variant="outline" className="w-full">
-              <Plus className="ml-2 h-4 w-4" />
-              إضافة صنف
-            </Button>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Input
+                          value={item.capacity || ""}
+                          onChange={(e) => updateItem(index, 'capacity', e.target.value)}
+                          className="w-20"
+                          placeholder="السعة"
+                        />
+                        <Select value={item.capacityUnit || ""} onValueChange={(value) => updateItem(index, 'capacityUnit', value)}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="الوحدة" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="">بدون وحدة</SelectItem>
+                            {capacityUnits.map((u) => (
+                              <SelectItem key={u} value={u}>
+                                {u}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        value={item.notes || ""}
+                        onChange={(e) => updateItem(index, 'notes', e.target.value)}
+                        placeholder="ملاحظات"
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
 
           <div className="flex gap-4 pt-4">
