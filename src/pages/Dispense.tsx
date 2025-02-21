@@ -117,12 +117,18 @@ export default function Dispense() {
       const doc = new jsPDF({
         orientation: "landscape",
         unit: "mm",
-        format: "a4"
+        format: "a4",
+        putOnlyUsedFonts: true,
+        floatPrecision: 16
       });
 
-      // إعداد دعم اللغة العربية
-      doc.addFont("https://fonts.gstatic.com/ea/notokufiarabic/v2/NotoKufiArabic-Regular.ttf", "NotoKufiArabic", "normal");
-      doc.setFont("NotoKufiArabic");
+      // تضمين ودعم الخط العربي
+      const arabicFont = await fetch('https://fonts.gstatic.com/s/amiri/v25/J7aRnpd8CGxBHqUq4w.woff2')
+        .then(response => response.arrayBuffer());
+      
+      doc.addFileToVFS('Amiri-Regular.ttf', arabicFont);
+      doc.addFont('Amiri-Regular.ttf', 'Amiri', 'normal');
+      doc.setFont('Amiri');
       doc.setR2L(true);
       doc.setLanguage("ar");
       
