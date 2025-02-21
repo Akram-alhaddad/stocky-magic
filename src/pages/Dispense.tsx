@@ -114,77 +114,101 @@ export default function Dispense() {
 
   const generatePDF = async () => {
     try {
-      // استخدام المكتبة مع الإعدادات الصحيحة للغة العربية
       const doc = new jsPDF({
         orientation: "landscape",
         unit: "mm",
-        format: "a4",
+        format: "a4"
       });
 
-      // إعداد خصائص الوثيقة
+      // إعداد دعم اللغة العربية
       doc.setR2L(true);
       doc.setLanguage("ar");
-
-      // تحديد نمط الخط والحجم
-      doc.setFont("helvetica");
-      doc.setFontSize(14);
-
-      // كتابة العنوان
-      doc.text("أمر صرف مخزني", 150, 20);
-
-      // معلومات الرأس
-      doc.setFontSize(12);
-      const today = new Date();
-      doc.text(`التاريخ: ${format(date, 'yyyy/MM/dd')}`, 250, 30);
-      doc.text(`القسم: ${department || 'غير محدد'}`, 250, 40);
-
-      // رسم الجدو////
-      const startY = 50;
-      const cellHeight = 10;
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const colWidth = pageWidth / 6;
-
-      // عناوين الأعمدة
-      doc.setFillColor(240, 240, 240);
-      doc.rect(10, startY, pageWidth - 20, cellHeight, 'F');
       
+      // تعيين الخط والحجم
+      doc.setFont("helvetica", "normal", "normal");
+      doc.setFontSize(16);
+
+      // إضافة العنوان
+      doc.text("أمر صرف مخزني", doc.internal.pageSize.getWidth() / 2, 20, { align: "center" });
+
+      // إضافة التاريخ والقسم
+      doc.setFontSize(12);
+      doc.text(`الت��ريخ: ${format(date, 'yyyy/MM/dd')}`, doc.internal.pageSize.getWidth() - 30, 35, { align: "right" });
+      doc.text(`القسم: ${department === 'none' ? 'غير محدد' : department}`, doc.internal.pageSize.getWidth() - 30, 45, { align: "right" });
+
+      // إعداد الجدول
+      const startY = 60;
+      const rowHeight = 12;
+      const margin = 10;
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const tableWidth = pageWidth - (2 * margin);
+      const colWidths = [15, 50, 30, 25, 40, 40];
+      
+      // إضافة رأس الجدول
       const headers = ["م", "الصنف", "الوحدة", "الكمية", "العبوة والسعة", "ملاحظات"];
+      let currentX = pageWidth - margin;
+      
+      // خلفية رأس الجدول
+      doc.setFillColor(240, 240, 240);
+      doc.rect(margin, startY, tableWidth, rowHeight, 'F');
+      
+      // نص رأس الجدول
+      doc.setFont("helvetica", "bold");
       headers.forEach((header, i) => {
-        doc.text(header, pageWidth - (i * colWidth) - 15, startY + 7);
+        currentX -= colWidths[i];
+        doc.text(header, currentX + (colWidths[i] / 2), startY + 8, { align: "center" });
       });
 
-      // بيانات الجدول
-      let currentY = startY + cellHeight;
+      // إضافة بيانات الجدول
+      doc.setFont("helvetica", "normal");
+      let currentY = startY + rowHeight;
       const validItems = dispenseItems.filter(item => item.itemId && item.quantity > 0);
       
       validItems.forEach((item, index) => {
         const foundItem = items?.find(i => i.id === item.itemId);
         if (!foundItem) return;
-
+        
+        currentX = pageWidth - margin;
+        
+        // بيانات الصف
         const rowData = [
           (index + 1).toString(),
           foundItem.nameAr,
-          item.unit || "",
+          item.unit || "-",
           item.quantity.toString(),
-          `${item.capacity || ""} ${item.capacityUnit || ""}`,
-          item.notes || ""
+          `${item.capacity || ""} ${item.capacityUnit || ""}`.trim() || "-",
+          item.notes || "-"
         ];
 
+        // رسم خط أفقي
+        doc.line(margin, currentY, pageWidth - margin, currentY);
+        
+        // كتابة البيانات
         rowData.forEach((text, i) => {
-          doc.text(text, pageWidth - (i * colWidth) - 15, currentY + 7);
+          currentX -= colWidths[i];
+          doc.text(text, currentX + (colWidths[i] / 2), currentY + 8, { align: "center" });
         });
 
-        // رسم خطوط الخلايا
-        doc.rect(10, currentY, pageWidth - 20, cellHeight);
-        currentY += cellHeight;
+        currentY += rowHeight;
       });
 
-      // التوقيعات
+      // رسم خط أفقي نهائي
+      doc.line(margin, currentY, pageWidth - margin, currentY);
+
+      // رسم الخطوط العمودية
+      let verticalX = margin;
+      for (let i = 0; i <= colWidths.length; i++) {
+        doc.line(verticalX, startY, verticalX, currentY);
+        verticalX += colWidths[i] || 0;
+      }
+
+      // إضافة التوقيعات
       currentY += 20;
-      doc.text("التوقيعات:", 150, currentY);
-      currentY += 10;
-      doc.text("المستلم: ________________", 250, currentY);
-      doc.text("أمين المخزن: ________________", 100, currentY);
+      doc.text("التوقيعات:", pageWidth / 2, currentY, { align: "center" });
+      currentY += 15;
+      
+      doc.text("المستلم: ________________", pageWidth - 50, currentY, { align: "right" });
+      doc.text("أمين المخزن: ________________", 50, currentY, { align: "left" });
 
       // حفظ الملف
       doc.save(`أمر-صرف-${format(date, 'yyyy-MM-dd')}.pdf`);
