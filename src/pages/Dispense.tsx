@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getDB, departments, units, capacityUnits } from "@/lib/db";
@@ -139,7 +138,7 @@ export default function Dispense() {
       doc.text(`التاريخ: ${format(date, 'yyyy/MM/dd')}`, 250, 30);
       doc.text(`القسم: ${department || 'غير محدد'}`, 250, 40);
 
-      // رسم الجدول
+      // رسم الجدو��
       const startY = 50;
       const cellHeight = 10;
       const pageWidth = doc.internal.pageSize.getWidth();
@@ -294,7 +293,6 @@ export default function Dispense() {
                           <SelectValue placeholder="اختر الصنف" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">بدون صنف</SelectItem>
                           {items?.map((item) => (
                             <SelectItem key={item.id} value={item.id}>
                               {item.nameAr} ({item.quantity})
@@ -304,12 +302,15 @@ export default function Dispense() {
                       </Select>
                     </TableCell>
                     <TableCell>
-                      <Select value={item.unit || ""} onValueChange={(value) => updateItem(index, 'unit', value)}>
+                      <Select 
+                        value={item.unit || "none"} 
+                        onValueChange={(value) => updateItem(index, 'unit', value === "none" ? "" : value)}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="اختر الوحدة" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">بدون وحدة</SelectItem>
+                          <SelectItem value="none">بدون وحدة</SelectItem>
                           {units.map((u) => (
                             <SelectItem key={u} value={u}>
                               {u}
@@ -334,12 +335,15 @@ export default function Dispense() {
                           className="w-20"
                           placeholder="السعة"
                         />
-                        <Select value={item.capacityUnit || ""} onValueChange={(value) => updateItem(index, 'capacityUnit', value)}>
+                        <Select 
+                          value={item.capacityUnit || "none"} 
+                          onValueChange={(value) => updateItem(index, 'capacityUnit', value === "none" ? "" : value)}
+                        >
                           <SelectTrigger>
                             <SelectValue placeholder="الوحدة" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">بدون وحدة</SelectItem>
+                            <SelectItem value="none">بدون وحدة</SelectItem>
                             {capacityUnits.map((u) => (
                               <SelectItem key={u} value={u}>
                                 {u}
