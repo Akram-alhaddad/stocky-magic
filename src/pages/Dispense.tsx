@@ -121,24 +121,25 @@ export default function Dispense() {
       });
 
       // إعداد دعم اللغة العربية
+      doc.addFont("https://fonts.gstatic.com/ea/notokufiarabic/v2/NotoKufiArabic-Regular.ttf", "NotoKufiArabic", "normal");
+      doc.setFont("NotoKufiArabic");
       doc.setR2L(true);
       doc.setLanguage("ar");
       
-      // تعيين الخط والحجم
-      doc.setFont("helvetica", "normal", "normal");
-      doc.setFontSize(16);
+      // تعيين حجم الخط للعنوان
+      doc.setFontSize(18);
 
       // إضافة العنوان
       doc.text("أمر صرف مخزني", doc.internal.pageSize.getWidth() / 2, 20, { align: "center" });
 
       // إضافة التاريخ والقسم
       doc.setFontSize(12);
-      doc.text(`الت��ريخ: ${format(date, 'yyyy/MM/dd')}`, doc.internal.pageSize.getWidth() - 30, 35, { align: "right" });
+      doc.text(`التاريخ: ${format(date, 'yyyy/MM/dd')}`, doc.internal.pageSize.getWidth() - 30, 35, { align: "right" });
       doc.text(`القسم: ${department === 'none' ? 'غير محدد' : department}`, doc.internal.pageSize.getWidth() - 30, 45, { align: "right" });
 
       // إعداد الجدول
       const startY = 60;
-      const rowHeight = 12;
+      const rowHeight = 10;
       const margin = 10;
       const pageWidth = doc.internal.pageSize.getWidth();
       const tableWidth = pageWidth - (2 * margin);
@@ -153,29 +154,25 @@ export default function Dispense() {
       doc.rect(margin, startY, tableWidth, rowHeight, 'F');
       
       // نص رأس الجدول
-      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
       headers.forEach((header, i) => {
         currentX -= colWidths[i];
-        doc.text(header, currentX + (colWidths[i] / 2), startY + 8, { align: "center" });
+        doc.text(header, currentX + (colWidths[i] / 2), startY + 7, { align: "center" });
       });
 
-      // إضافة بيانات الجدول
-      doc.setFont("helvetica", "normal");
+      // إضافة بيانات الجدول - كل الأسطر حتى الفارغة
       let currentY = startY + rowHeight;
-      const validItems = dispenseItems.filter(item => item.itemId && item.quantity > 0);
       
-      validItems.forEach((item, index) => {
+      dispenseItems.forEach((item, index) => {
         const foundItem = items?.find(i => i.id === item.itemId);
-        if (!foundItem) return;
-        
         currentX = pageWidth - margin;
         
         // بيانات الصف
         const rowData = [
           (index + 1).toString(),
-          foundItem.nameAr,
+          foundItem?.nameAr || "-",
           item.unit || "-",
-          item.quantity.toString(),
+          item.quantity ? item.quantity.toString() : "-",
           `${item.capacity || ""} ${item.capacityUnit || ""}`.trim() || "-",
           item.notes || "-"
         ];
@@ -186,7 +183,7 @@ export default function Dispense() {
         // كتابة البيانات
         rowData.forEach((text, i) => {
           currentX -= colWidths[i];
-          doc.text(text, currentX + (colWidths[i] / 2), currentY + 8, { align: "center" });
+          doc.text(text, currentX + (colWidths[i] / 2), currentY + 7, { align: "center" });
         });
 
         currentY += rowHeight;
@@ -204,6 +201,7 @@ export default function Dispense() {
 
       // إضافة التوقيعات
       currentY += 20;
+      doc.setFontSize(12);
       doc.text("التوقيعات:", pageWidth / 2, currentY, { align: "center" });
       currentY += 15;
       
