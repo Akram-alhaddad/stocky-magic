@@ -721,5 +721,4 @@ export default function Dispense() {
                               <SelectTrigger>
                                 <SelectValue placeholder="الوحدة" />
                               </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="none
+                              
