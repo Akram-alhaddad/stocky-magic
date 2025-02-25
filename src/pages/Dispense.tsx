@@ -719,6 +719,4 @@ export default function Dispense() {
                               onValueChange={(value) => updateItem(index, 'capacityUnit', value === "none" ? "" : value)}
                             >
                               <SelectTrigger>
-                                <SelectValue placeholder="الوحدة" />
-                              </SelectTrigger>
-                
+                                
