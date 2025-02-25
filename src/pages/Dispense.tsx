@@ -716,7 +716,4 @@ export default function Dispense() {
                             />
                             <Select 
                               value={item.capacityUnit || "none"} 
-                              onValueChange={(value) => updateItem(index, 'capacityUnit', value === "none" ? "" : value)}
-                            >
-                              <SelectTrigger>
-                                
+                              onValueChange={(value
