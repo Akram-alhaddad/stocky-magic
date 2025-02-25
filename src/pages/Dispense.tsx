@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getDB, departments, units, capacityUnits } from "@/lib/db";
@@ -112,25 +113,16 @@ export default function Dispense() {
     }
   });
 
-  const generatePDF = async () => {
+  const generatePDF = () => {
     try {
       const doc = new jsPDF({
         orientation: "landscape",
         unit: "mm",
-        format: "a4",
-        putOnlyUsedFonts: true,
-        floatPrecision: 16
+        format: "a4"
       });
 
-      // تضمين ودعم الخط العربي
-      const arabicFont = await fetch('https://fonts.gstatic.com/s/amiri/v25/J7aRnpd8CGxBHqUq4w.woff2')
-        .then(response => response.arrayBuffer());
-      
-      doc.addFileToVFS('Amiri-Regular.ttf', arabicFont);
-      doc.addFont('Amiri-Regular.ttf', 'Amiri', 'normal');
-      doc.setFont('Amiri');
+      // تفعيل الكتابة من اليمين إلى اليسار
       doc.setR2L(true);
-      doc.setLanguage("ar");
       
       // تعيين حجم الخط للعنوان
       doc.setFontSize(18);
