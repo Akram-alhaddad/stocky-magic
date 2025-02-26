@@ -716,4 +716,223 @@ export default function Dispense() {
                             />
                             <Select 
                               value={item.capacityUnit || "none"} 
-                              onValueChange={(value
+                              onValueChange={(value) => updateItem(index, 'capacityUnit', value === "none" ? "" : value)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="الوحدة" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">بدون وحدة</SelectItem>
+                                {capacityUnits.map((u) => (
+                                  <SelectItem key={u} value={u}>
+                                    {u}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Input
+                            value={item.notes || ""}
+                            onChange={(e) => updateItem(index, 'notes', e.target.value)}
+                            className="w-full"
+                            placeholder="ملاحظات"
+                          />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              <div className="flex gap-4 justify-end">
+                <Button 
+                  variant="outline" 
+                  onClick={handlePrint}
+                  className="gap-2"
+                >
+                  <PrinterIcon className="h-4 w-4" />
+                  طباعة
+                </Button>
+                <Button onClick={() => generatePDF()} className="gap-2">
+                  <FileDown className="h-4 w-4" />
+                  تصدير PDF
+                </Button>
+                <Button onClick={handleSave} className="gap-2">
+                  <Save className="h-4 w-4" />
+                  حفظ
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="previous">
+          <Card className="max-w-7xl mx-auto p-6">
+            <div className="space-y-6">
+              <h2 className="text-xl font-bold font-arabic">أوامر الصرف السابقة</h2>
+              
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-right">رقم الأمر</TableHead>
+                      <TableHead className="text-right">التاريخ</TableHead>
+                      <TableHead className="text-right">القسم</TableHead>
+                      <TableHead className="text-right">عدد الأصناف</TableHead>
+                      <TableHead className="text-right">إجمالي الكميات</TableHead>
+                      <TableHead className="text-right">الإجراءات</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {transactions?.filter(t => t.type === "out").map((transaction) => (
+                      <TableRow key={transaction.id}>
+                        <TableCell>{transaction.id.substring(0, 8)}</TableCell>
+                        <TableCell>{format(new Date(transaction.date), 'yyyy/MM/dd')}</TableCell>
+                        <TableCell>{transaction.department === 'none' ? 'غير محدد' : transaction.department}</TableCell>
+                        <TableCell>{transaction.items.length}</TableCell>
+                        <TableCell>{transaction.items.reduce((sum, item) => sum + item.quantity, 0)}</TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              onClick={() => generatePDF(transaction)}
+                            >
+                              <FileDown className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="reports">
+          <Card className="max-w-7xl mx-auto p-6">
+            <div className="space-y-6">
+              <h2 className="text-xl font-bold font-arabic">تقارير الصرف المخزني</h2>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                  <Label className="font-arabic mb-2">نوع التقرير</Label>
+                  <Select value={reportType} onValueChange={setReportType}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="اختر نوع التقرير" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">كل المعاملات</SelectItem>
+                      <SelectItem value="byDepartment">حسب القسم</SelectItem>
+                      <SelectItem value="byItem">حسب الصنف</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label className="font-arabic mb-2">الفترة</Label>
+                  <Select value={reportPeriod} onValueChange={handleReportPeriodChange}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="اختر الفترة" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="monthly">شهري</SelectItem>
+                      <SelectItem value="yearly">سنوي</SelectItem>
+                      <SelectItem value="custom">مخصص</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label className="font-arabic mb-2">القسم</Label>
+                  <Select value={filterDepartment} onValueChange={setFilterDepartment}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="اختر القسم" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">جميع الأقسام</SelectItem>
+                      {departments.map((dept) => (
+                        <SelectItem key={dept} value={dept}>
+                          {dept}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {reportPeriod === "custom" && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <Label className="font-arabic mb-2">من تاريخ</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-right font-normal",
+                            !startDate && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="ml-2 h-4 w-4" />
+                          {startDate ? format(startDate, 'yyyy/MM/dd') : "اختر التاريخ"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={startDate}
+                          onSelect={(date) => date && setStartDate(date)}
+                          initialFocus
+                          locale={arSA}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+
+                  <div>
+                    <Label className="font-arabic mb-2">إلى تاريخ</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-right font-normal",
+                            !endDate && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="ml-2 h-4 w-4" />
+                          {endDate ? format(endDate, 'yyyy/MM/dd') : "اختر التاريخ"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={endDate}
+                          onSelect={(date) => date && setEndDate(date)}
+                          initialFocus
+                          locale={arSA}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-4 justify-end">
+                <Button onClick={generateReportPDF} className="gap-2">
+                  <FileText className="h-4 w-4" />
+                  تصدير التقرير
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
