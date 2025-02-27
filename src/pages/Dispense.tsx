@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getDB, departments, units, capacityUnits } from "@/lib/db";
@@ -41,13 +40,7 @@ import {
   PrinterIcon, 
   FileDown, 
   Save, 
-  CalendarIcon, 
-  Plus, 
-  Trash2, 
-  FileText, 
-  PieChart, 
-  BarChart, 
-  Filter
+  CalendarIcon
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -80,7 +73,7 @@ export default function Dispense() {
   const [filterDepartment, setFilterDepartment] = useState("all");
   const [startDate, setStartDate] = useState<Date>(startOfMonth(new Date()));
   const [endDate, setEndDate] = useState<Date>(endOfMonth(new Date()));
-  
+
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -107,7 +100,6 @@ export default function Dispense() {
       
       const validItems = items.filter(item => item.itemId && item.quantity > 0);
       
-      // Validate quantities
       for (const dispenseItem of validItems) {
         const item = await db.get("items", dispenseItem.itemId);
         if (!item) throw new Error("الصنف غير موجود");
@@ -116,7 +108,6 @@ export default function Dispense() {
         }
       }
       
-      // Update quantities
       for (const dispenseItem of validItems) {
         const item = await db.get("items", dispenseItem.itemId);
         await db.put("items", {
@@ -126,7 +117,6 @@ export default function Dispense() {
         });
       }
       
-      // Add transaction
       const transactionId = crypto.randomUUID();
       await db.add("transactions", {
         id: transactionId,
@@ -158,112 +148,92 @@ export default function Dispense() {
   const generatePDF = (transaction?: Transaction) => {
     try {
       const doc = new jsPDF({
-        orientation: "landscape",
+        orientation: "portrait",
         unit: "mm",
         format: "a4"
       });
 
-      // تفعيل الكتابة من اليمين إلى اليسار
       doc.setR2L(true);
       
-      // تعيين حجم الخط للعنوان
-      doc.setFontSize(18);
+      const logoPath = '/lovable-uploads/827ec35a-05da-43be-99c3-b490062605d1.png';
+      doc.addImage(logoPath, 'PNG', doc.internal.pageSize.getWidth() / 2 - 30, 20, 60, 30);
+      
+      doc.setFontSize(20);
+      doc.text("طلب/أمر (صرف مخزني)", doc.internal.pageSize.getWidth() / 2, 65, { align: "center" });
 
-      // تحديد البيانات التي سيتم استخدامها في الطباعة
-      const printDate = transaction ? new Date(transaction.date) : date;
-      const printDepartment = transaction ? transaction.department : department;
-      const printItems = transaction ? transaction.items : dispenseItems;
-
-      // إضافة العنوان
-      doc.text("أمر صرف مخزني", doc.internal.pageSize.getWidth() / 2, 20, { align: "center" });
-
-      // إضافة التاريخ والقسم
       doc.setFontSize(12);
-      doc.text(`التاريخ: ${format(printDate, 'yyyy/MM/dd')}`, doc.internal.pageSize.getWidth() - 30, 35, { align: "right" });
-      doc.text(`القسم: ${printDepartment === 'none' ? 'غير محدد' : printDepartment}`, doc.internal.pageSize.getWidth() - 30, 45, { align: "right" });
+      doc.text(":اليوم", doc.internal.pageSize.getWidth() - 30, 30);
+      doc.text(":التاريخ", doc.internal.pageSize.getWidth() - 30, 40);
+      doc.text(":القسم", doc.internal.pageSize.getWidth() - 30, 50);
 
-      // إعداد الجدول
-      const startY = 60;
+      doc.text(format(date, 'yyyy/MM/dd'), doc.internal.pageSize.getWidth() - 60, 40);
+      doc.text(department === 'none' ? '-' : department, doc.internal.pageSize.getWidth() - 60, 50);
+
+      const startY = 80;
       const rowHeight = 10;
       const margin = 10;
       const pageWidth = doc.internal.pageSize.getWidth();
       const tableWidth = pageWidth - (2 * margin);
-      const colWidths = [15, 50, 30, 25, 40, 40];
+      const colWidths = [25, 35, 25, 25, 35, 35];
       
-      // إضافة رأس الجدول
-      const headers = ["م", "الصنف", "الوحدة", "الكمية", "العبوة والسعة", "ملاحظات"];
+      const headers = ["م", "الصنف", "الوحدة", "الكمية", "العبوة/السعة", "ملاحظات"];
       let currentX = pageWidth - margin;
       
-      // خلفية رأس الجدول
       doc.setFillColor(240, 240, 240);
       doc.rect(margin, startY, tableWidth, rowHeight, 'F');
       
-      // نص رأس الجدول
-      doc.setFontSize(10);
       headers.forEach((header, i) => {
         currentX -= colWidths[i];
         doc.text(header, currentX + (colWidths[i] / 2), startY + 7, { align: "center" });
       });
 
-      // إضافة بيانات الجدول - كل الأسطر حتى الفارغة
       let currentY = startY + rowHeight;
       
-      // عدد الأسطر الثابت 10 أسطر
-      const displayItems = [...printItems];
-      // إذا كان عدد العناصر أقل من 10، أضف عناصر فارغة
-      while (displayItems.length < 10) {
-        displayItems.push({ itemId: "", quantity: 0 });
-      }
-      
-      displayItems.forEach((item, index) => {
-        const foundItem = items?.find(i => i.id === item.itemId);
-        currentX = pageWidth - margin;
+      for (let i = 0; i < 10; i++) {
+        const item = dispenseItems[i] || { itemId: "", quantity: 0 };
+        const foundItem = items?.find(it => it.id === item.itemId);
         
-        // بيانات الصف
-        const rowData = [
-          (index + 1).toString(),
-          foundItem?.nameAr || "-",
-          item.unit || "-",
-          item.quantity ? item.quantity.toString() : "-",
-          `${item.capacity || ""} ${item.capacityUnit || ""}`.trim() || "-",
-          item.notes || "-"
-        ];
-
-        // رسم خط أفقي
+        currentX = pageWidth - margin;
         doc.line(margin, currentY, pageWidth - margin, currentY);
         
-        // كتابة البيانات
-        rowData.forEach((text, i) => {
-          currentX -= colWidths[i];
-          doc.text(text, currentX + (colWidths[i] / 2), currentY + 7, { align: "center" });
+        const rowData = [
+          (i + 1).toString(),
+          foundItem?.nameAr || "",
+          item.unit || "",
+          item.quantity ? item.quantity.toString() : "",
+          `${item.capacity || ""} ${item.capacityUnit || ""}`.trim(),
+          item.notes || ""
+        ];
+
+        rowData.forEach((text, j) => {
+          currentX -= colWidths[j];
+          doc.text(text, currentX + (colWidths[j] / 2), currentY + 7, { align: "center" });
         });
 
         currentY += rowHeight;
-      });
+      }
 
-      // رسم خط أفقي نهائي
       doc.line(margin, currentY, pageWidth - margin, currentY);
 
-      // رسم الخطوط العمودية
       let verticalX = margin;
       for (let i = 0; i <= colWidths.length; i++) {
         doc.line(verticalX, startY, verticalX, currentY);
-        verticalX += colWidths[i] || 0;
+        verticalX += colWidths[i];
       }
 
-      // إضافة التوقيعات
       currentY += 20;
-      doc.setFontSize(12);
-      doc.text("التوقيعات:", pageWidth / 2, currentY, { align: "center" });
-      currentY += 15;
       
-      doc.text("المستلم: ________________", pageWidth - 50, currentY, { align: "right" });
-      doc.text("أمين المخزن: ________________", 50, currentY, { align: "left" });
+      doc.text("المستلم:", pageWidth - 30, currentY);
+      doc.text("التوقيع:", pageWidth - 30, currentY + 15);
+      
+      doc.text("أمين المخازن:", 60, currentY);
+      doc.text("التوقيع:", 60, currentY + 15);
+      
+      doc.text("المحاسب:", 60, currentY + 30);
 
-      // حفظ الملف
       const fileName = transaction 
         ? `أمر-صرف-${transaction.id.substring(0, 8)}.pdf` 
-        : `أمر-صرف-${format(printDate, 'yyyy-MM-dd')}.pdf`;
+        : `أمر-صرف-${format(date, 'yyyy-MM-dd')}.pdf`;
       
       doc.save(fileName);
 
@@ -285,27 +255,19 @@ export default function Dispense() {
         format: "a4"
       });
 
-      // تفعيل الكتابة من اليمين إلى اليسار
       doc.setR2L(true);
       
-      // تعيين حجم الخط للعنوان
-      doc.setFontSize(18);
-
-      // تصفية المعاملات حسب المعايير المختارة
       let filteredTransactions = transactions?.filter(t => t.type === "out") || [];
       
-      // تصفية حسب القسم
       if (filterDepartment !== "all") {
         filteredTransactions = filteredTransactions.filter(t => t.department === filterDepartment);
       }
 
-      // تصفية حسب التاريخ
       filteredTransactions = filteredTransactions.filter(t => {
         const transactionDate = new Date(t.date);
         return isWithinInterval(transactionDate, { start: startDate, end: endDate });
       });
 
-      // تحديد عنوان التقرير
       let reportTitle = "تقرير الصرف المخزني";
       if (reportPeriod === "monthly") {
         reportTitle += ` - شهر ${format(startDate, 'MMMM yyyy', { locale: arSA })}`;
@@ -319,10 +281,8 @@ export default function Dispense() {
         reportTitle += ` - قسم ${filterDepartment}`;
       }
 
-      // إضافة العنوان
       doc.text(reportTitle, doc.internal.pageSize.getWidth() / 2, 20, { align: "center" });
 
-      // إذا لم تكن هناك معاملات
       if (filteredTransactions.length === 0) {
         doc.setFontSize(14);
         doc.text("لا توجد بيانات للعرض في هذه الفترة", doc.internal.pageSize.getWidth() / 2, 50, { align: "center" });
@@ -330,11 +290,9 @@ export default function Dispense() {
         return;
       }
 
-      // تجميع البيانات حسب نوع التقرير
       let reportData: any[] = [];
       
       if (reportType === "all") {
-        // تقرير كل المعاملات
         reportData = filteredTransactions.map(t => ({
           id: t.id.substring(0, 8),
           date: format(new Date(t.date), 'yyyy/MM/dd'),
@@ -343,7 +301,6 @@ export default function Dispense() {
           totalQuantity: t.items.reduce((sum, item) => sum + item.quantity, 0)
         }));
       } else if (reportType === "byDepartment") {
-        // تقرير حسب القسم
         const deptSummary = new Map();
         
         filteredTransactions.forEach(t => {
@@ -370,7 +327,6 @@ export default function Dispense() {
           totalQuantity: data.totalQuantity
         }));
       } else if (reportType === "byItem") {
-        // تقرير حسب الصنف
         const itemSummary = new Map();
         
         filteredTransactions.forEach(t => {
@@ -402,14 +358,12 @@ export default function Dispense() {
         }));
       }
 
-      // إعداد الجدول
       const startY = 40;
       const rowHeight = 10;
       const margin = 10;
       const pageWidth = doc.internal.pageSize.getWidth();
       const tableWidth = pageWidth - (2 * margin);
       
-      // تحديد العناوين وأعرض الأعمدة حسب نوع التقرير
       let headers: string[] = [];
       let colWidths: number[] = [];
       
@@ -424,27 +378,21 @@ export default function Dispense() {
         colWidths = [80, 40, 40];
       }
       
-      // رسم رأس الجدول
       let currentX = pageWidth - margin;
       
-      // خلفية رأس الجدول
       doc.setFillColor(240, 240, 240);
       doc.rect(margin, startY, tableWidth, rowHeight, 'F');
       
-      // نص رأس الجدول
-      doc.setFontSize(10);
       headers.forEach((header, i) => {
         currentX -= colWidths[i];
         doc.text(header, currentX + (colWidths[i] / 2), startY + 7, { align: "center" });
       });
 
-      // إضافة بيانات الجدول
       let currentY = startY + rowHeight;
       
       reportData.forEach((row, index) => {
         currentX = pageWidth - margin;
         
-        // تحديد بيانات الصف حسب نوع التقرير
         let rowData: string[] = [];
         
         if (reportType === "all") {
@@ -470,10 +418,8 @@ export default function Dispense() {
           ];
         }
 
-        // رسم خط أفقي
         doc.line(margin, currentY, pageWidth - margin, currentY);
         
-        // كتابة البيانات
         rowData.forEach((text, i) => {
           currentX -= colWidths[i];
           doc.text(text, currentX + (colWidths[i] / 2), currentY + 7, { align: "center" });
@@ -481,12 +427,10 @@ export default function Dispense() {
 
         currentY += rowHeight;
         
-        // التحقق من انتهاء الصفحة وإضافة صفحة جديدة إذا لزم الأمر
         if (currentY > doc.internal.pageSize.getHeight() - 20 && index < reportData.length - 1) {
           doc.addPage();
           currentY = 20;
           
-          // إعادة رسم رأس الجدول في الصفحة الجديدة
           doc.setFillColor(240, 240, 240);
           doc.rect(margin, currentY, tableWidth, rowHeight, 'F');
           
@@ -500,17 +444,14 @@ export default function Dispense() {
         }
       });
 
-      // رسم خط أفقي نهائي
       doc.line(margin, currentY, pageWidth - margin, currentY);
 
-      // رسم الخطوط العمودية
       let verticalX = margin;
       for (let i = 0; i <= colWidths.length; i++) {
         doc.line(verticalX, startY, verticalX, currentY);
         verticalX += colWidths[i] || 0;
       }
 
-      // إضافة معلومات إضافية
       currentY += 15;
       doc.setFontSize(12);
       
@@ -525,13 +466,11 @@ export default function Dispense() {
       currentY += 10;
       doc.text(`إجمالي الكميات المصروفة: ${totalQuantities}`, pageWidth - 30, currentY, { align: "right" });
 
-      // إضافة التاريخ والتوقيع
       currentY = doc.internal.pageSize.getHeight() - 30;
       
       doc.text(`تاريخ التقرير: ${format(new Date(), 'yyyy/MM/dd')}`, pageWidth - 30, currentY, { align: "right" });
       doc.text("توقيع المسؤول: ________________", 70, currentY, { align: "left" });
 
-      // حفظ الملف
       let fileName = `تقرير-الصرف-المخزني`;
       if (reportPeriod === "monthly") {
         fileName += `-${format(startDate, 'yyyy-MM')}`;
@@ -583,7 +522,6 @@ export default function Dispense() {
       setStartDate(startOfYear(today));
       setEndDate(endOfYear(today));
     } else if (period === "custom") {
-      // تحتفظ بالتواريخ الحالية للفترة المخصصة
     }
   };
 
@@ -601,169 +539,191 @@ export default function Dispense() {
         </TabsList>
         
         <TabsContent value="new">
-          <Card className="max-w-7xl mx-auto p-6">
-            <div className="space-y-6">
-              <div className="flex gap-4">
-                <div className="flex-1">
-                  <Label className="font-arabic mb-2">القسم</Label>
-                  <Select value={department} onValueChange={setDepartment}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="اختر القسم" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">بدون قسم</SelectItem>
-                      {departments.map((dept) => (
-                        <SelectItem key={dept} value={dept}>
-                          {dept}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="flex-1">
-                  <Label className="font-arabic mb-2">التاريخ</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-right font-normal",
-                          !date && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="ml-2 h-4 w-4" />
-                        {date ? format(date, 'yyyy/MM/dd') : "اختر التاريخ"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={date}
-                        onSelect={(date) => date && setDate(date)}
-                        initialFocus
-                        locale={arSA}
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
+          <Card className="max-w-4xl mx-auto p-6 bg-white">
+            <div className="text-center mb-8">
+              <img 
+                src="/lovable-uploads/827ec35a-05da-43be-99c3-b490062605d1.png" 
+                alt="شعار" 
+                className="mx-auto w-40 h-auto mb-4"
+              />
+              <h1 className="text-2xl font-bold mb-2">طلب/أمر (صرف مخزني)</h1>
+            </div>
+            
+            <div className="grid grid-cols-3 gap-4 mb-6 text-right">
+              <div>
+                <Label className="font-arabic text-lg">:اليوم</Label>
+                <Input className="text-right" type="text" />
               </div>
+              <div>
+                <Label className="font-arabic text-lg">:التاريخ</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-right",
+                        !date && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="ml-2 h-4 w-4" />
+                      {date ? format(date, 'yyyy/MM/dd') : "اختر التاريخ"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={date}
+                      onSelect={(date) => date && setDate(date)}
+                      initialFocus
+                      locale={arSA}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div>
+                <Label className="font-arabic text-lg">:القسم</Label>
+                <Select value={department} onValueChange={setDepartment}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="اختر القسم" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">بدون قسم</SelectItem>
+                    {departments.map((dept) => (
+                      <SelectItem key={dept} value={dept}>
+                        {dept}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
 
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="text-right">م</TableHead>
-                      <TableHead className="text-right">الصنف</TableHead>
-                      <TableHead className="text-right">الوحدة</TableHead>
-                      <TableHead className="text-right">الكمية</TableHead>
-                      <TableHead className="text-right">العبوة والسعة</TableHead>
-                      <TableHead className="text-right">ملاحظات</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {dispenseItems.map((item, index) => (
-                      <TableRow key={index}>
-                        <TableCell>{index + 1}</TableCell>
-                        <TableCell>
-                          <Select value={item.itemId || "none"} onValueChange={(value) => updateItem(index, 'itemId', value === "none" ? "" : value)}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="اختر الصنف" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="none">اختر الصنف</SelectItem>
-                              {items?.map((item) => (
-                                <SelectItem key={item.id} value={item.id}>
-                                  {item.nameAr} ({item.quantity})
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </TableCell>
-                        <TableCell>
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-right">م</TableHead>
+                    <TableHead className="text-right">الصنف</TableHead>
+                    <TableHead className="text-right">الوحدة</TableHead>
+                    <TableHead className="text-right">الكمية</TableHead>
+                    <TableHead className="text-right">العبوة/السعة</TableHead>
+                    <TableHead className="text-right">ملاحظات</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {dispenseItems.map((item, index) => (
+                    <TableRow key={index}>
+                      <TableCell>{index + 1}</TableCell>
+                      <TableCell>
+                        <Select value={item.itemId || "none"} onValueChange={(value) => updateItem(index, 'itemId', value === "none" ? "" : value)}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="اختر الصنف" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">اختر الصنف</SelectItem>
+                            {items?.map((item) => (
+                              <SelectItem key={item.id} value={item.id}>
+                                {item.nameAr} ({item.quantity})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell>
+                        <Select 
+                          value={item.unit || "none"} 
+                          onValueChange={(value) => updateItem(index, 'unit', value === "none" ? "" : value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="الوحدة" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">بدون وحدة</SelectItem>
+                            {units.map((u) => (
+                              <SelectItem key={u} value={u}>
+                                {u}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          type="number"
+                          value={item.quantity || ""}
+                          onChange={(e) => updateItem(index, 'quantity', e.target.value ? Number(e.target.value) : 0)}
+                          className="w-24"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Input
+                            value={item.capacity || ""}
+                            onChange={(e) => updateItem(index, 'capacity', e.target.value)}
+                            className="w-20"
+                            placeholder="السعة"
+                          />
                           <Select 
-                            value={item.unit || "none"} 
-                            onValueChange={(value) => updateItem(index, 'unit', value === "none" ? "" : value)}
+                            value={item.capacityUnit || "none"} 
+                            onValueChange={(value) => updateItem(index, 'capacityUnit', value === "none" ? "" : value)}
                           >
                             <SelectTrigger>
-                              <SelectValue placeholder="اختر الوحدة" />
+                              <SelectValue placeholder="الوحدة" />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="none">بدون وحدة</SelectItem>
-                              {units.map((u) => (
+                              {capacityUnits.map((u) => (
                                 <SelectItem key={u} value={u}>
                                   {u}
                                 </SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            type="number"
-                            value={item.quantity || ""}
-                            onChange={(e) => updateItem(index, 'quantity', e.target.value ? Number(e.target.value) : 0)}
-                            className="w-24"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            <Input
-                              value={item.capacity || ""}
-                              onChange={(e) => updateItem(index, 'capacity', e.target.value)}
-                              className="w-20"
-                              placeholder="السعة"
-                            />
-                            <Select 
-                              value={item.capacityUnit || "none"} 
-                              onValueChange={(value) => updateItem(index, 'capacityUnit', value === "none" ? "" : value)}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="الوحدة" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="none">بدون وحدة</SelectItem>
-                                {capacityUnits.map((u) => (
-                                  <SelectItem key={u} value={u}>
-                                    {u}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            value={item.notes || ""}
-                            onChange={(e) => updateItem(index, 'notes', e.target.value)}
-                            className="w-full"
-                            placeholder="ملاحظات"
-                          />
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          value={item.notes || ""}
+                          onChange={(e) => updateItem(index, 'notes', e.target.value)}
+                          className="w-full"
+                          placeholder="ملاحظات"
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
 
-              <div className="flex gap-4 justify-end">
-                <Button 
-                  variant="outline" 
-                  onClick={handlePrint}
-                  className="gap-2"
-                >
-                  <PrinterIcon className="h-4 w-4" />
-                  طباعة
-                </Button>
-                <Button onClick={() => generatePDF()} className="gap-2">
-                  <FileDown className="h-4 w-4" />
-                  تصدير PDF
-                </Button>
-                <Button onClick={handleSave} className="gap-2">
-                  <Save className="h-4 w-4" />
-                  حفظ
-                </Button>
+            <div className="grid grid-cols-2 gap-8 mt-8">
+              <div className="text-right">
+                <p className="mb-4">:المستلم</p>
+                <p>:التوقيع</p>
               </div>
+              <div className="text-right">
+                <p className="mb-4">:أمين المخازن</p>
+                <p className="mb-4">:التوقيع</p>
+                <p>:المحاسب</p>
+              </div>
+            </div>
+
+            <div className="flex gap-4 justify-end mt-6">
+              <Button 
+                variant="outline" 
+                onClick={handlePrint}
+                className="gap-2"
+              >
+                <PrinterIcon className="h-4 w-4" />
+                طباعة
+              </Button>
+              <Button onClick={() => generatePDF()} className="gap-2">
+                <FileDown className="h-4 w-4" />
+                تصدير PDF
+              </Button>
+              <Button onClick={handleSave} className="gap-2">
+                <Save className="h-4 w-4" />
+                حفظ
+              </Button>
             </div>
           </Card>
         </TabsContent>
