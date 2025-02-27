@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getDB, departments, units, capacityUnits } from "@/lib/db";
@@ -73,7 +74,7 @@ export default function Dispense() {
   const [filterDepartment, setFilterDepartment] = useState("all");
   const [startDate, setStartDate] = useState<Date>(startOfMonth(new Date()));
   const [endDate, setEndDate] = useState<Date>(endOfMonth(new Date()));
-
+  
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -255,6 +256,7 @@ export default function Dispense() {
         format: "a4"
       });
 
+      // تفعيل الكتابة من اليمين إلى اليسار
       doc.setR2L(true);
       
       let filteredTransactions = transactions?.filter(t => t.type === "out") || [];
@@ -522,6 +524,7 @@ export default function Dispense() {
       setStartDate(startOfYear(today));
       setEndDate(endOfYear(today));
     } else if (period === "custom") {
+      // تحتفظ بالتواريخ الحالية للفترة المخصصة
     }
   };
 
@@ -885,7 +888,7 @@ export default function Dispense() {
 
               <div className="flex gap-4 justify-end">
                 <Button onClick={generateReportPDF} className="gap-2">
-                  <FileText className="h-4 w-4" />
+                  <FileDown className="h-4 w-4" />
                   تصدير التقرير
                 </Button>
               </div>
